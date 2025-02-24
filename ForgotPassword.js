@@ -29,7 +29,7 @@ const ForgotPassword = () => {
             const user = users.find((u) => u.account.email === email);
 
             if (!user) {
-                setError("Email không tồn tại trong hệ thống");
+                setError("Email does not exist in the system");
                 return;
             }
 
@@ -39,31 +39,31 @@ const ForgotPassword = () => {
 
             await sendResetCodeEmail(email, code);
 
-            setSuccess("Mã xác nhận đã được gửi đến email của bạn");
+            setSuccess("Verification code has been sent to your email");
             setShowCodeInput(true);
         } catch (error) {
-            console.error("Lỗi trong handleSubmit:", error);
-            setError("Đã xảy ra lỗi. Vui lòng thử lại sau.");
+            console.error("Error in handleSubmit:", error);
+            setError("An error occurred. Please try again later.");
         }
     };
 
     const sendResetCodeEmail = async (email, resetCode) => {
         try {
-            console.log("Đang gửi email với thông tin:", { email, resetCode });
-            const verifyMessage = `Mã xác nhận của bạn là ${resetCode}\nVui lòng nhập mã này để đặt lại mật khẩu.`;
+            console.log("Sending email with information:", { email, resetCode });
+            const verifyMessage = `Your verification code is ${resetCode}\nPlease enter this code to reset your password.`;
             const response = await emailjs.send(
-                "service_c7gfj15", // Service ID từ Register
-                "template_kiwvwgw", // Template ID từ Register
+                "service_c7gfj15", // Service ID from Register
+                "template_kiwvwgw", // Template ID from Register
                 {
                     to_email: email,
                     code: verifyMessage,
                 },
-                "b1-fjcU3V1tkyr56I" // Public Key từ Register
+                "b1-fjcU3V1tkyr56I" // Public Key from Register
             );
-            console.log("Gửi email thành công:", response);
+            console.log("Email sent successfully:", response);
         } catch (error) {
-            console.error("Lỗi khi gửi email:", error);
-            throw new Error("Không thể gửi email mã xác nhận");
+            console.error("Error sending email:", error);
+            throw new Error("Unable to send verification code email");
         }
     };
 
@@ -81,62 +81,61 @@ const ForgotPassword = () => {
                 user.account.password = newPassword;
                 await axios.put(`http://localhost:9999/users/${userId}`, user);
 
-                setSuccess(`Đặt lại mật khẩu thành công. Mật khẩu mới của bạn là: ${newPassword}`);
-                // Bỏ dòng setTimeout để không tự nhảy về trang login
+                setSuccess(`Password reset successful. Your new password is: ${newPassword}`);
             } catch (error) {
-                console.error("Lỗi khi cập nhật mật khẩu:", error);
-                setError("Đã xảy ra lỗi khi đặt lại mật khẩu. Vui lòng thử lại.");
+                console.error("Error updating password:", error);
+                setError("An error occurred while resetting the password. Please try again.");
             }
         } else {
-            setError("Mã xác nhận không đúng. Vui lòng thử lại.");
+            setError("The verification code is incorrect. Please try again.");
         }
     };
 
     return (
-        <Container fluid className="d-flex justify-content-center align-items-center" style={{ minHeight: "50vh", paddingTop: "20px" , paddingBottom: "20px"}}>
+        <Container fluid className="d-flex justify-content-center align-items-center" style={{ minHeight: "50vh", paddingTop: "20px", paddingBottom: "20px" }}>
             <Row className="w-100">
                 <Col md={6} lg={4} className="mx-auto">
-                    <h2 style={{ color: "#007bff" }} className="text-center mt-3">Quên mật khẩu</h2>
+                    <h2 style={{ color: "#007bff" }} className="text-center mt-3">Forgot Password</h2>
                     {error && <Alert variant="danger">{error}</Alert>}
                     {success && <Alert variant="success">{success}</Alert>}
                     {!showCodeInput ? (
                         <Form onSubmit={handleSubmit} className="bg-light p-4 rounded shadow-sm">
                             <Form.Group className="mb-3">
-                                <Form.Label>Địa chỉ email</Form.Label>
+                                <Form.Label>Email Address</Form.Label>
                                 <Form.Control
                                     type="email"
-                                    placeholder="Nhập email của bạn"
+                                    placeholder="Enter your email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
                                 />
                             </Form.Group>
                             <Button variant="primary" type="submit" className="w-100">
-                                Gửi mã xác nhận
+                                Send Verification Code
                             </Button>
                         </Form>
                     ) : (
                         <Form onSubmit={handleCodeSubmit} className="mt-3 bg-light p-4 rounded shadow-sm">
                             <Form.Group className="mb-3">
-                                <Form.Label>Nhập mã xác nhận từ email</Form.Label>
+                                <Form.Label>Enter Verification Code from Email</Form.Label>
                                 <Form.Control
                                     type="text"
-                                    placeholder="Nhập mã xác nhận"
+                                    placeholder="Enter verification code"
                                     value={resetCode}
                                     onChange={(e) => setResetCode(e.target.value)}
                                     required
                                 />
                             </Form.Group>
                             <Button variant="primary" type="submit" className="w-100">
-                                Xác nhận và đặt lại mật khẩu
+                                Confirm and Reset Password
                             </Button>
                         </Form>
                     )}
                     <div className="text-center mt-3">
                         <p>
-                            <Link to="/auth/login">Quay lại đăng nhập</Link>
+                            <Link to="/auth/login">Back to Login</Link>
                         </p>
-                        <Link to="/">Về trang chủ</Link>
+                        <Link to="/">Back to Home</Link>
                     </div>
                 </Col>
             </Row>
