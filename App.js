@@ -4,6 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { NavigationContainer } from '@react-navigation/native';
 import ProfileScreen from './components/ProfileScreen';
 import ProfileEdit from './components/ProfileEdit';
+import Home from './components/Home';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -23,6 +24,7 @@ export default function App() {
   return (
     <NavigationContainer>
       <Tab.Navigator screenOptions={{ headerShown: false }}>
+        <Tab.Screen name="Hoome" component={Home} />
         <Tab.Screen name="Home" component={ProfileScreen} />
         <Tab.Screen name="Profile" component={ProfileStack} />
       </Tab.Navigator>
