@@ -1,5 +1,22 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import React from 'react';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createStackNavigator } from '@react-navigation/stack';
+import { NavigationContainer } from '@react-navigation/native';
+import ProfileScreen from './components/ProfileScreen';
+import ProfileEdit from './components/ProfileEdit';
+
+const Tab = createBottomTabNavigator();
+const Stack = createStackNavigator();
+
+// Stack Navigator cho tab Profile
+function ProfileStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Profile" component={ProfileScreen} />
+      <Stack.Screen name="ProfileEdit" component={ProfileEdit} />
+    </Stack.Navigator>
+  );
+}
 
 export default function App() {
   return (
