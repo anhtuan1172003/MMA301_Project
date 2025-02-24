@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, Button, ActivityIndicator, Alert } from 'react-native';
 import axios from 'axios';
 
-const API_URL = 'http://192.168.1.100:9999/users/2';
+const API_URL = 'https://mma-json-deploy.onrender.com/users/2';
 
 function ProfileScreen({ navigation }) {
   const [user, setUser] = useState(null);
