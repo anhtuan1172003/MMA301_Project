@@ -15,7 +15,10 @@ const HomeScreen = () => {
     const navigation = useNavigation();
 
     useEffect(() => {
-        axios.get("http://192.168.1.100:9999/photos") // Thay 192.168.x.x bằng IP máy tính của bạn
+
+        
+        axios.get("https://mma-json-deploy.onrender.com/photos") // Thay 192.168.x.x bằng IP máy tính của bạn
+
 
             .then(response => {
                 let tempPhoto = response.data;
@@ -101,7 +104,8 @@ const HomeScreen = () => {
                         onPress={() => Alert.alert("Chọn ảnh", item.title)}
                     >
                         <Image
-                            source={{ uri: `http://localhost:9999/images/${item.image?.thumbnail}` }}
+
+                            source={{ uri: `https://mma-json-deploy.onrender.com/images/${item.image?.thumbnail}` }}
                             style={styles.image}
                         />
                         <Text style={styles.title}>{item.title}</Text>
