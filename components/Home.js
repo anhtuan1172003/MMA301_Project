@@ -105,7 +105,7 @@ const HomeScreen = () => {
                     >
                         <Image
 
-                            source={{ uri: `https://mma-json-deploy.onrender.com/images/${item.image?.thumbnail}` }}
+                            source={{ uri: `https://mma-json-deploy.onrender.com/albums/${item.image?.thumbnail}` }}
                             style={styles.image}
                         />
                         <Text style={styles.title}>{item.title}</Text>
