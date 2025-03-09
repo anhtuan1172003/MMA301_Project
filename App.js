@@ -26,7 +26,7 @@ export default function App() {
     <NavigationContainer>
       <Tab.Navigator screenOptions={{ headerShown: false }}>
         <Tab.Screen name="Profile" component={ProfileStack} />
-        <Tab.Screen name="Hoome" component={Home} />
+        <Tab.Screen name="Home" component={Home} />
       </Tab.Navigator>
     </NavigationContainer>
   );
