@@ -3,7 +3,7 @@ import { View, Text, TextInput, Button, Alert, ActivityIndicator } from 'react-n
 import { Picker } from '@react-native-picker/picker';
 import axios from 'axios';
 
-const API_URL = 'http://192.168.1.100:9999/users/2';
+const API_URL = 'https://mma-json-deploy.onrender.com/users/2';
 
 const cities = [
   'An Giang', 'Bà Rịa - Vũng Tàu', 'Bạc Liêu', 'Bắc Giang', 'Bắc Kạn', 'Bắc Ninh', 'Bến Tre',
