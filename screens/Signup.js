@@ -14,8 +14,7 @@ import COLORS from "../constants/colors";
 import axios from "axios";
 import emailjs from "emailjs-com"; // Import EmailJS
 
-const API_URL = "https://mma-json-deploy.onrender.com"; // Thay bằng API của bạn
-
+const API_URL = "https://mma301-project-be-9e9f.onrender.com";
 const Signup = ({ navigation }) => {
   // State quản lý thông tin người dùng
   const [email, setEmail] = useState("");

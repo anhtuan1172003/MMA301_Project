@@ -17,7 +17,7 @@ const HomeScreen = () => {
     useEffect(() => {
 
         
-        axios.get("https://mma-json-deploy.onrender.com/photos") // Thay 192.168.x.x bằng IP máy tính của bạn
+        axios.get("https://mma301-project-be-9e9f.onrender.com/photos") // Thay 192.168.x.x bằng IP máy tính của bạn
 
 
             .then(response => {

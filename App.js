@@ -1,51 +1,43 @@
-import React, { useState } from "react";
-import { NavigationContainer } from "@react-navigation/native";
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import Welcome from "./screens/Welcome";
+import { NavigationContainer } from "@react-navigation/native"
+import { createNativeStackNavigator } from "@react-navigation/native-stack"
+import { AuthProvider, useAuth } from "./AuthContext"
+import Home from "./screens/Home";
 import Login from "./screens/Login";
 import Signup from "./screens/Signup";
-import Home from "./components/Home";
-import ProfileScreen from "./components/ProfileScreen";
-import ProfileEdit from "./components/ProfileEdit";
+import Welcome from "./screens/Welcome";
+import MainApp from "./MainApp"
 
-const Stack = createNativeStackNavigator();
-const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator()
 
-// Stack Navigator cho Profile
-function ProfileStack() {
-  return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Profile" component={Profile} />
-      <Stack.Screen name="ProfileEdit" component={ProfileEdit} />
-    </Stack.Navigator>
-  );
-}
+function Navigation() {
+  const { isLoading, userToken } = useAuth()
 
-// Tab Navigator cho ứng dụng chính
-function AppNavigator() {
-  return (
-    <Tab.Navigator screenOptions={{ headerShown: false }}>
-      <Tab.Screen name="Home" component={Home} />
-      <Tab.Screen name="Profile" component={ProfileStack} />
-    </Tab.Navigator>
-  );
-}
-
-export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false); // Kiểm tra trạng thái đăng nhập
+  if (isLoading) {
+    return null // or a loading screen
+  }
 
   return (
     <NavigationContainer>
-      {isLoggedIn ? (
-        <AppNavigator />
-      ) : (
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="Welcome" component={Welcome} />
-          <Stack.Screen name="Login" component={Login} />
-          <Stack.Screen name="Signup" component={Signup} />
-        </Stack.Navigator>
-      )}
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {userToken == null ? (
+          <>
+            <Stack.Screen name="Welcome" component={Welcome} />
+            <Stack.Screen name="Login" component={Login} />
+            <Stack.Screen name="Signup" component={Signup} />
+          </>
+        ) : (
+          <Stack.Screen name="MainApp" component={MainApp} />
+        )}
+      </Stack.Navigator>
     </NavigationContainer>
-  );
+  )
 }
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <Navigation />
+    </AuthProvider>
+  )
+}
+
