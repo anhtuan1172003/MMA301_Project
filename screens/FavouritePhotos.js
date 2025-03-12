@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
-    View, Text, FlatList, Image, TouchableOpacity, StyleSheet
+    View, Text, FlatList, Image, TouchableOpacity, StyleSheet, TextInput
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { FontAwesome } from "@expo/vector-icons";
@@ -8,6 +8,7 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 
 const FavouritePhotos = ({ route }) => {
     const [favoritePhotos, setFavoritePhotos] = useState([]);
+    const [searchQuery, setSearchQuery] = useState("");
     const navigation = useNavigation();
 
     const loadFavorites = async () => {
@@ -42,12 +43,24 @@ const FavouritePhotos = ({ route }) => {
         }
     };
 
+    const filteredPhotos = favoritePhotos.filter(photo =>
+        photo.title.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
     return (
         <View style={styles.container}>
             <Text style={styles.title}>Ảnh Yêu Thích</Text>
 
+            {/* Tìm kiếm */}
+            <TextInput
+                style={styles.searchInput}
+                placeholder="Tìm kiếm ảnh yêu thích..."
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+            />
+
             <FlatList
-                data={favoritePhotos}
+                data={filteredPhotos}
                 keyExtractor={item => item.id.toString()}
                 numColumns={2}
                 renderItem={({ item }) => (
@@ -59,19 +72,18 @@ const FavouritePhotos = ({ route }) => {
                         </TouchableOpacity>
                     </View>
                 )}
-                ListEmptyComponent={<Text style={styles.notFound}>Không có ảnh yêu thích</Text>}
+                ListEmptyComponent={<Text style={styles.emptyText}>Không có ảnh yêu thích</Text>}
             />
 
             <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
                 <FontAwesome name="arrow-left" size={20} color="white" />
-                <Text style={styles.backText}> Quay lại</Text>
+                <Text style={styles.backButtonText}> Quay lại</Text>
             </TouchableOpacity>
         </View>
     );
 };
 
 export default FavouritePhotos;
-
 
 const styles = StyleSheet.create({
     container: { 
@@ -85,6 +97,15 @@ const styles = StyleSheet.create({
         fontWeight: "bold", 
         textAlign: "center", 
         marginBottom: 10 
+    },
+    searchInput: {
+        height: 40,
+        borderColor: "#ccc",
+        borderWidth: 1,
+        borderRadius: 5,
+        paddingLeft: 10,
+        marginBottom: 15,
+        backgroundColor: "#fff"
     },
     card: { 
         flex: 1, 
@@ -133,7 +154,3 @@ const styles = StyleSheet.create({
         marginLeft: 5 
     },
 });
-
-
-
-
