@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useContext } from "react";
 import {
   View,
   Text,
@@ -10,21 +10,50 @@ import {
   SafeAreaView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { PhotoContext } from "./PhotoContext";
 
-const PhotoDetails = () => {
+const PhotoDetails = ({ route, navigation }) => {
+  const { photos } = useContext(PhotoContext);
+  const { photoId } = route.params;
+  const photo = photos.find((p) => p.id === photoId);
+
+  if (!photo) {
+    return (
+      <View style={styles.container}>
+        <Text>Photo not found!</Text>
+      </View>
+    );
+  }
+
+  const comments = [
+    {
+      user: "tuanbinentertainment",
+      content: "Người đẹp vậy cho tớ làm quen nhé",
+      time: "2 giờ",
+    },
+    { user: "kimth", content: "ngành gì ngày b", time: "2 giờ" },
+    {
+      user: "ntuyennhngoc_",
+      content: "Mang máy tính & Truyện trong túi à",
+      time: "1 giờ",
+    },
+  ];
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.container}>
         <View style={styles.mainHeader}>
-          <Ionicons name="chevron-back" size={24} />
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="chevron-back" size={24} />
+          </TouchableOpacity>
           <Text style={styles.headerTitle}>PhotoFORUM</Text>
           <Ionicons name="reorder-two-outline" size={24} />
         </View>
         <View style={styles.header}>
-          <Image source={require("./assets/p2.png")} style={styles.avatar} />
+          <Image source={require("../assets/p2.png")} style={styles.avatar} />
           <View style={styles.userTitle}>
             <Text style={styles.username}>vanh.004</Text>
-            <Text style={styles.time}>22 giờ</Text>
+            <Text style={styles.time}>{photo.timestamp}</Text>
           </View>
           <Ionicons
             name="ellipsis-horizontal"
@@ -34,17 +63,14 @@ const PhotoDetails = () => {
           />
         </View>
         <View style={{ paddingLeft: 5 }}>
-          <Text>Title</Text>
+          <Text>{photo.caption || "No caption"}</Text>
         </View>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           style={styles.imagesContainer}
         >
-          <Image source={require("./assets/p1.png")} style={styles.image} />
-          <Image source={require("./assets/p2.png")} style={styles.image} />
-          <Image source={require("./assets/p3.png")} style={styles.image} />
-          <Image source={require("./assets/p4.png")} style={styles.image} />
+          <Image source={{ uri: photo.uri }} style={styles.image} />
         </ScrollView>
         <View style={styles.reactions}>
           <Ionicons name="heart-outline" size={24} />
@@ -53,26 +79,14 @@ const PhotoDetails = () => {
           <Ionicons name="paper-plane-outline" size={24} />
         </View>
         <View style={styles.commentsContainer}>
-          {[
-            {
-              user: "tuanbinentertainment",
-              content: "Người đẹp vậy cho tớ làm quen nhé",
-              time: "2 giờ",
-            },
-            { user: "kimth", content: "ngành gì ngày b", time: "2 giờ" },
-            {
-              user: "ntuyennhngoc_",
-              content: "Mang máy tính & Truyện trong túi à",
-              time: "1 giờ",
-            },
-          ].map((comment, index) => (
+          {comments.map((comment, index) => (
             <View
               style={[styles.comment, index > 0 && styles.commentWithBorder]}
               key={index}
             >
               <View style={styles.userInfo}>
                 <Image
-                  source={require("./assets/p2.png")}
+                  source={require("../assets/p2.png")}
                   style={styles.avatar}
                 />
                 <View style={styles.commentText}>
