@@ -37,15 +37,29 @@ const FavouritePhotos = ({ route }) => {
         setFavoritePhotos(updatedFavorites);
         await AsyncStorage.setItem("favoritePhotos", JSON.stringify(updatedFavorites));
 
-        // Truyền lại danh sách yêu thích mới cho trang Home
+        // Giảm số lượt thích
+        const savedLikes = await AsyncStorage.getItem("likes");
+        let updatedLikes = savedLikes ? JSON.parse(savedLikes) : {};
+
+        if (updatedLikes[photoId] && updatedLikes[photoId] > 0) {
+            updatedLikes[photoId] -= 1;
+        }
+
+        await AsyncStorage.setItem("likes", JSON.stringify(updatedLikes));
+
+        // Truyền lại danh sách yêu thích mới và số lượt thích về HomeScreen
         if (route?.params?.updateFavorites) {
             route.params.updateFavorites(updatedFavorites);
+        }
+        if (route?.params?.updateLikes) {
+            route.params.updateLikes(updatedLikes);
         }
     };
 
     const filteredPhotos = favoritePhotos.filter(photo =>
-        photo.title.toLowerCase().includes(searchQuery.toLowerCase())
+        photo.title && photo.title.toLowerCase().includes(searchQuery.toLowerCase())
     );
+    
 
     return (
         <View style={styles.container}>
@@ -86,18 +100,8 @@ const FavouritePhotos = ({ route }) => {
 export default FavouritePhotos;
 
 const styles = StyleSheet.create({
-    container: { 
-        flex: 1, 
-        padding: 10, 
-        backgroundColor: "#45f7f4", 
-        paddingVertical: 50 
-    },
-    title: { 
-        fontSize: 20, 
-        fontWeight: "bold", 
-        textAlign: "center", 
-        marginBottom: 10 
-    },
+    container: { flex: 1, padding: 10, backgroundColor: "#45f7f4", paddingVertical: 50 },
+    title: { fontSize: 20, fontWeight: "bold", textAlign: "center", marginBottom: 10 },
     searchInput: {
         height: 40,
         borderColor: "#ccc",
@@ -107,50 +111,26 @@ const styles = StyleSheet.create({
         marginBottom: 15,
         backgroundColor: "#fff"
     },
-    card: { 
-        flex: 1, 
-        margin: 5, 
-        borderRadius: 10, 
-        overflow: "hidden", 
-        backgroundColor: "#fff" 
+    card: { flex: 1, margin: 5, borderRadius: 10, overflow: "hidden", backgroundColor: "#fff" },
+    image: { width: "100%", height: 120, resizeMode: "cover" },
+    photoTitle: { textAlign: "center", padding: 5, fontSize: 14, fontWeight: "500" },
+    removeButton: {
+        position: "absolute",
+        top: 5,
+        right: 5,
+        backgroundColor: "#FF5733",
+        padding: 5,
+        borderRadius: 20
     },
-    image: { 
-        width: "100%", 
-        height: 120, 
-        resizeMode: "cover" 
+    emptyText: { textAlign: "center", fontSize: 16, color: "red", marginTop: 20 },
+    backButton: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "#FF5733",
+        padding: 10,
+        borderRadius: 8,
+        marginTop: 10
     },
-    photoTitle: { 
-        textAlign: "center", 
-        padding: 5, 
-        fontSize: 14, 
-        fontWeight: "500"
-    },
-    removeButton: { 
-        position: "absolute", 
-        top: 5, 
-        right: 5, 
-        backgroundColor: "#FF5733", 
-        padding: 5, 
-        borderRadius: 20 
-    },
-    emptyText: { 
-        textAlign: "center", 
-        fontSize: 16, 
-        color: "red", 
-        marginTop: 20 
-    },
-    backButton: { 
-        flexDirection: "row", 
-        alignItems: "center", 
-        justifyContent: "center", 
-        backgroundColor: "#FF5733", 
-        padding: 10, 
-        borderRadius: 8, 
-        marginTop: 10 
-    },
-    backButtonText: { 
-        color: "white", 
-        fontSize: 16, 
-        marginLeft: 5 
-    },
+    backButtonText: { color: "white", fontSize: 16, marginLeft: 5 }
 });
