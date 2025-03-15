@@ -14,11 +14,34 @@ export default function ProfileScreen() {
     const [loading, setLoading] = useState(true);
     const navigation = useNavigation();
     const { photos } = useContext(PhotoContext);
+    const [sortedPhotos, setSortedPhotos] = useState([]); // Mảng đã sắp xếp
 
     useEffect(() => {
         console.log('Photos in ProfileScreen:', photos);
         getUserId();
+        sortPhotosByTimestamp(); // Sắp xếp ảnh khi photos thay đổi
     }, [photos]);
+
+    // Hàm sắp xếp photos theo thời gian chụp (mới nhất trước)
+    const sortPhotosByTimestamp = () => {
+        const sorted = [...photos].sort((a, b) => {
+            // Chuyển timestamp thành Date để so sánh
+            const dateA = parseTimestamp(a.timestamp);
+            const dateB = parseTimestamp(b.timestamp);
+            return dateB - dateA; // Sắp xếp giảm dần (mới nhất trước)
+        });
+        setSortedPhotos(sorted);
+    };
+
+    // Hàm parse timestamp từ "HH:mm:ss DD/M/YYYY" thành Date
+    const parseTimestamp = (timestamp) => {
+        // Ví dụ: "09:09:13 15/3/2025" -> [HH:mm:ss, DD/M/YYYY]
+        const [time, date] = timestamp.split(' '); // Tách thành ["09:09:13", "15/3/2025"]
+        const [hours, minutes, seconds] = time.split(':').map(Number); // Tách giờ: [9, 9, 13]
+        const [day, month, year] = date.split('/').map(Number); // Tách ngày: [15, 3, 2025]
+        // Tạo đối tượng Date (lưu ý: tháng trong Date bắt đầu từ 0, nên trừ 1)
+        return new Date(year, month - 1, day, hours, minutes, seconds);
+    };
 
     const getUserId = async () => {
         try {
@@ -115,7 +138,7 @@ export default function ProfileScreen() {
 
             <View style={styles.photosContainer}>
                 <FlatList
-                    data={photos}
+                    data={sortedPhotos} // Sử dụng mảng đã sắp xếp
                     renderItem={renderPhotoItem}
                     keyExtractor={(item) => item.id}
                     numColumns={3}

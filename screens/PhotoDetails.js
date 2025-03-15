@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useState } from "react";
 import {
   View,
   Text,
@@ -8,14 +8,27 @@ import {
   TextInput,
   TouchableOpacity,
   SafeAreaView,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { PhotoContext } from "./PhotoContext";
+import axios from "axios";
+import SHA1 from "crypto-js/sha1"; // Import SHA1 from crypto-js
+import {
+  CLOUDINARY_CLOUD_NAME,
+  CLOUDINARY_UPLOAD_PRESET,
+  CLOUDINARY_UPLOAD_URL,
+} from "./cloudinaryConfig";
+
+const CLOUDINARY_API_KEY = "328648749455327"; // Replace with your actual API Key
+const CLOUDINARY_API_SECRET = "NrMzJTzmDIr0zRtoUvYbrCGynt4"; // Replace with your actual API Secret
+const CLOUDINARY_API_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/destroy`;
 
 const PhotoDetails = ({ route, navigation }) => {
-  const { photos } = useContext(PhotoContext);
+  const { photos, savePhotos } = useContext(PhotoContext);
   const { photoId } = route.params;
   const photo = photos.find((p) => p.id === photoId);
+  const [showDeleteOption, setShowDeleteOption] = useState(false);
 
   if (!photo) {
     return (
@@ -39,6 +52,82 @@ const PhotoDetails = ({ route, navigation }) => {
     },
   ];
 
+  // Hàm xử lý khi nhấn vào dấu ba chấm
+  const handleEllipsisPress = () => {
+    setShowDeleteOption(!showDeleteOption);
+  };
+
+  // Hàm xóa ảnh trên Cloudinary
+  const deleteFromCloudinary = async (publicId) => {
+    try {
+      const timestamp = Math.floor(Date.now() / 1000).toString();
+      const signature = SHA1(
+        `public_id=${publicId}&timestamp=${timestamp}${CLOUDINARY_API_SECRET}`
+      ).toString();
+
+      const response = await axios.post(
+        CLOUDINARY_API_URL,
+        {
+          public_id: publicId,
+          api_key: CLOUDINARY_API_KEY,
+          timestamp: timestamp,
+          signature: signature,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.data.result === "ok") {
+        console.log("Photo deleted from Cloudinary:", publicId);
+        return true;
+      } else {
+        throw new Error("Failed to delete from Cloudinary");
+      }
+    } catch (error) {
+      console.error("Error deleting from Cloudinary:", error);
+      return false;
+    }
+  };
+
+  // Hàm xóa ảnh
+  const handleDeletePhoto = () => {
+    Alert.alert(
+      "Xác nhận xóa",
+      "Bạn có chắc chắn muốn xóa ảnh này? ",
+      [
+        {
+          text: "Hủy",
+          style: "cancel",
+        },
+        {
+          text: "Xóa",
+          onPress: async () => {
+            // Lấy public_id từ URL của ảnh
+            const urlParts = photo.uri.split("/");
+            const fileName = urlParts[urlParts.length - 1].split(".")[0]; // Lấy tên file (không có đuôi)
+            const publicId = fileName; // Adjust if using folders, e.g., "folder/filename"
+
+            // Xóa trên Cloudinary
+            const deletedFromCloudinary = await deleteFromCloudinary(publicId);
+
+            if (deletedFromCloudinary) {
+              // Xóa khỏi PhotoContext nếu xóa trên Cloudinary thành công
+              const updatedPhotos = photos.filter((p) => p.id !== photoId);
+              savePhotos(updatedPhotos);
+              navigation.goBack();
+            } else {
+              Alert.alert("Lỗi", "Không thể xóa ảnh trên Cloudinary.");
+            }
+          },
+          style: "destructive",
+        },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.container}>
@@ -55,13 +144,25 @@ const PhotoDetails = ({ route, navigation }) => {
             <Text style={styles.username}>vanh.004</Text>
             <Text style={styles.time}>{photo.timestamp}</Text>
           </View>
-          <Ionicons
-            name="ellipsis-horizontal"
-            size={15}
-            color="gray"
-            style={{ bottom: 10 }}
-          />
+          <TouchableOpacity onPress={handleEllipsisPress}>
+            <Ionicons
+              name="ellipsis-horizontal"
+              size={15}
+              color="gray"
+              style={{ bottom: 10 }}
+            />
+          </TouchableOpacity>
         </View>
+        {showDeleteOption && (
+          <View style={styles.deleteOption}>
+            <TouchableOpacity
+              onPress={handleDeletePhoto}
+              style={styles.deleteButton}
+            >
+              <Text style={styles.deleteButtonText}>Xóa ảnh</Text>
+            </TouchableOpacity>
+          </View>
+        )}
         <View style={{ paddingLeft: 5 }}>
           <Text>{photo.caption || "No caption"}</Text>
         </View>
@@ -213,6 +314,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   buttonText: { color: "#fff", fontWeight: "bold" },
+  deleteOption: {
+    position: "absolute",
+    right: 10,
+    top: 40,
+    backgroundColor: "#fff",
+    borderRadius: 5,
+    padding: 5,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+  },
+  deleteButton: {
+    padding: 5,
+  },
+  deleteButtonText: {
+    color: "red",
+    fontWeight: "bold",
+  },
 });
 
 export default PhotoDetails;
