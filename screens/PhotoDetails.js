@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,23 +8,144 @@ import {
   TextInput,
   TouchableOpacity,
   SafeAreaView,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getCommentsByPhotoId, createComment } from "../services/CommentService";
+import { toggleFavorite, checkIsFavorite } from "../services/FavoriteService";
+import { FontAwesome } from "@expo/vector-icons";
 
-const PhotoDetails = () => {
+const PhotoDetails = ({ route }) => {
+  const navigation = useNavigation();
+  const { photo } = route.params || {};
+  const [comments, setComments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [newComment, setNewComment] = useState("");
+  const [user, setUser] = useState(null);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favoriteId, setFavoriteId] = useState(null);
+
+  useEffect(() => {
+    loadUser();
+    loadComments();
+  }, []);
+
+  const checkFavoriteStatus = async () => {
+    try {
+      if (user?._id && photo?._id) {
+        const favorite = await checkIsFavorite(photo._id, user._id);
+        if (favorite) {
+          setIsFavorite(true);
+          setFavoriteId(favorite._id);
+        } else {
+          setIsFavorite(false);
+          setFavoriteId(null);
+        }
+      }
+    } catch (error) {
+      console.error("Error checking favorite status:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (user && photo) {
+      checkFavoriteStatus();
+    }
+  }, [user, photo]);
+
+  const handleToggleFavorite = async () => {
+    if (!user) {
+      Alert.alert("Thông báo", "Vui lòng đăng nhập để sử dụng tính năng này");
+      return;
+    }
+
+    try {
+      const result = await toggleFavorite(photo._id, user._id);
+      setIsFavorite(result.isFavorite);
+
+      // Update likes in AsyncStorage
+      const savedLikes = await AsyncStorage.getItem("likes");
+      let updatedLikes = savedLikes ? JSON.parse(savedLikes) : {};
+      
+      if (result.isFavorite) {
+        setFavoriteId(result.favorite._id);
+        updatedLikes[photo._id] = (updatedLikes[photo._id] || 0) + 1;
+      } else {
+        setFavoriteId(null);
+        updatedLikes[photo._id] = Math.max((updatedLikes[photo._id] || 0) - 1, 0);
+      }
+
+      await AsyncStorage.setItem("likes", JSON.stringify(updatedLikes));
+    } catch (error) {
+      console.error("Error toggling favorite:", error);
+      Alert.alert("Lỗi", "Không thể cập nhật trạng thái yêu thích. Vui lòng thử lại sau.");
+    }
+  };
+
+  const loadUser = async () => {
+    try {
+      const storedUser = await AsyncStorage.getItem("user");
+      if (storedUser) {
+        setUser(JSON.parse(storedUser));
+      }
+    } catch (error) {
+      console.error("Error loading user:", error);
+    }
+  };
+
+  const loadComments = async () => {
+    try {
+      if (photo?._id) {
+        const fetchedComments = await getCommentsByPhotoId(photo._id);
+        setComments(fetchedComments);
+      }
+    } catch (error) {
+      console.error("Error loading comments:", error);
+      Alert.alert("Lỗi", "Không thể tải bình luận. Vui lòng thử lại sau.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmitComment = async () => {
+    if (!user) {
+      Alert.alert("Thông báo", "Vui lòng đăng nhập để bình luận");
+      return;
+    }
+    if (!newComment.trim()) {
+      Alert.alert("Thông báo", "Vui lòng nhập nội dung bình luận");
+      return;
+    }
+    try {
+      const comment = await createComment(photo._id, user._id, newComment);
+      setComments([...comments, comment]);
+      setNewComment("");
+    } catch (error) {
+      console.error("Error creating comment:", error);
+      Alert.alert("Lỗi", "Không thể đăng bình luận. Vui lòng thử lại sau.");
+    }
+  };
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.container}>
         <View style={styles.mainHeader}>
-          <Ionicons name="chevron-back" size={24} />
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="chevron-back" size={24} />
+          </TouchableOpacity>
           <Text style={styles.headerTitle}>PhotoFORUM</Text>
           <Ionicons name="reorder-two-outline" size={24} />
         </View>
         <View style={styles.header}>
-          <Image source={require("./assets/p2.png")} style={styles.avatar} />
+          <Image
+            source={photo?.user?.avatar ? { uri: photo.user.avatar } : require("../assets/p2.png")}
+            style={styles.avatar}
+          />
           <View style={styles.userTitle}>
-            <Text style={styles.username}>vanh.004</Text>
-            <Text style={styles.time}>22 giờ</Text>
+            <Text style={styles.username}>{photo?.user?.username || "Người dùng"}</Text>
+            <Text style={styles.time}>{photo?.createdAt ? new Date(photo.createdAt).toLocaleString() : ""}</Text>
           </View>
           <Ionicons
             name="ellipsis-horizontal"
@@ -34,73 +155,90 @@ const PhotoDetails = () => {
           />
         </View>
         <View style={{ paddingLeft: 5 }}>
-          <Text>Title</Text>
+          <Text>{photo?.title || "Không có tiêu đề"}</Text>
         </View>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           style={styles.imagesContainer}
         >
-          <Image source={require("./assets/p1.png")} style={styles.image} />
-          <Image source={require("./assets/p2.png")} style={styles.image} />
-          <Image source={require("./assets/p3.png")} style={styles.image} />
-          <Image source={require("./assets/p4.png")} style={styles.image} />
+          {photo?.image ? (
+            Array.isArray(photo.image.url) ? (
+              photo.image.url.map((url, index) => (
+                <Image key={index} source={{ uri: url }} style={styles.image} />
+              ))
+            ) : photo.image.url ? (
+              <Image
+                source={{ uri: Array.isArray(photo.image.url) ? photo.image.url[0] : photo.image.url }}
+                style={styles.image}
+              />
+            ) : photo.image.thumbnail ? (
+              <Image
+                source={{ uri: photo.image.thumbnail }}
+                style={styles.image}
+              />
+            ) : (
+              <Image source={require("../assets/p1.png")} style={styles.image} />
+            )
+          ) : (
+            <Image source={require("../assets/p1.png")} style={styles.image} />
+          )}
         </ScrollView>
         <View style={styles.reactions}>
-          <Ionicons name="heart-outline" size={24} />
+          <TouchableOpacity onPress={handleToggleFavorite}>
+            <FontAwesome name={isFavorite ? "heart" : "heart-o"} size={24} color="red" />
+          </TouchableOpacity>
           <Ionicons name="chatbubble-ellipses-outline" size={24} />
           <Ionicons name="repeat-outline" size={24} />
           <Ionicons name="paper-plane-outline" size={24} />
         </View>
         <View style={styles.commentsContainer}>
-          {[
-            {
-              user: "tuanbinentertainment",
-              content: "Người đẹp vậy cho tớ làm quen nhé",
-              time: "2 giờ",
-            },
-            { user: "kimth", content: "ngành gì ngày b", time: "2 giờ" },
-            {
-              user: "ntuyennhngoc_",
-              content: "Mang máy tính & Truyện trong túi à",
-              time: "1 giờ",
-            },
-          ].map((comment, index) => (
-            <View
-              style={[styles.comment, index > 0 && styles.commentWithBorder]}
-              key={index}
-            >
-              <View style={styles.userInfo}>
-                <Image
-                  source={require("./assets/p2.png")}
-                  style={styles.avatar}
-                />
-                <View style={styles.commentText}>
-                  <View style={{ flexDirection: "row" }}>
-                    <Text style={styles.commentUser}>{comment.user}</Text>
-                    <Text style={styles.time}>{comment.time}</Text>
+          {loading ? (
+            <ActivityIndicator size="large" color="#0000ff" />
+          ) : comments.length === 0 ? (
+            <Text style={styles.noComments}>Chưa có bình luận nào</Text>
+          ) : (
+            comments.map((comment, index) => (
+              <View
+                style={[styles.comment, index > 0 && styles.commentWithBorder]}
+                key={index}
+              >
+                <View style={styles.userInfo}>
+                  <Image
+                    source={require("../assets/p2.png")}
+                    style={styles.avatar}
+                  />
+                  <View style={styles.commentText}>
+                    <View style={{ flexDirection: "row" }}>
+                      <Text style={styles.commentUser}>{comment.userId?.username || "Người dùng"}</Text>
+                      <Text style={styles.time}>{new Date(comment.createdAt).toLocaleString()}</Text>
+                    </View>
+                    <View style={styles.commentContentContainer}>
+                      <Text style={styles.commentContent}>{comment.text}</Text>
+                    </View>
+                    <View style={styles.reactions}>
+                      <Ionicons name="heart-outline" size={20} />
+                      <Ionicons name="chatbubble-ellipses-outline" size={20} />
+                      <Ionicons name="repeat-outline" size={20} />
+                      <Ionicons name="paper-plane-outline" size={20} />
+                    </View>
                   </View>
-                  <View style={styles.commentContentContainer}>
-                    <Text style={styles.commentContent}>{comment.content}</Text>
+                  <View style={{ bottom: 18 }}>
+                    <Ionicons name="ellipsis-horizontal" size={15} color="gray" />
                   </View>
-                  <View style={styles.reactions}>
-                    <Ionicons name="heart-outline" size={20} />
-                    <Ionicons name="chatbubble-ellipses-outline" size={20} />
-                    <Ionicons name="repeat-outline" size={20} />
-                    <Ionicons name="paper-plane-outline" size={20} />
-                  </View>
-                </View>
-                <View style={{ bottom: 18 }}>
-                  <Ionicons name="ellipsis-horizontal" size={15} color="gray" />
                 </View>
               </View>
-            </View>
-          ))}
+            )))}
         </View>
 
         <View style={{ flex: 1 }}>
-          <TextInput placeholder="Viết bình luận..." style={styles.input} />
-          <TouchableOpacity style={styles.button}>
+          <TextInput
+            placeholder="Viết bình luận..."
+            style={styles.input}
+            value={newComment}
+            onChangeText={setNewComment}
+          />
+          <TouchableOpacity style={styles.button} onPress={handleSubmitComment}>
             <Text style={styles.buttonText}>Gửi</Text>
           </TouchableOpacity>
         </View>
@@ -110,6 +248,12 @@ const PhotoDetails = () => {
 };
 
 const styles = StyleSheet.create({
+  noComments: {
+    textAlign: "center",
+    fontSize: 16,
+    color: "gray",
+    marginVertical: 20,
+  },
   safeArea: {
     flex: 1,
   },

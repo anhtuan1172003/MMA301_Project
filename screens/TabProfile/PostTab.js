@@ -36,7 +36,7 @@ const PostTab = () => {
       const response = await axios.get(
         `https://mma301-project-be-9e9f.onrender.com/photos`
       );
-      const photos = response.data;
+      const photos = response.data.data;
       const formattedData = photos.map((photo) => ({
         id: photo._id || photo.id,
         uri: photo.image.thumbnail || photo.image.url[0],

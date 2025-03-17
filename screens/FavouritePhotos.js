@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import {
-    View, Text, FlatList, Image, TouchableOpacity, StyleSheet, TextInput
+    View, Text, FlatList, Image, TouchableOpacity, StyleSheet, TextInput, Alert, ActivityIndicator
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { FontAwesome } from "@expo/vector-icons";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { getFavoritesByUserId, removeFavorite } from "../services/FavoriteService";
 
 const FavouritePhotos = ({ route }) => {
     const [favoritePhotos, setFavoritePhotos] = useState([]);
@@ -13,12 +14,34 @@ const FavouritePhotos = ({ route }) => {
 
     const loadFavorites = async () => {
         try {
-            const savedFavorites = await AsyncStorage.getItem("favoritePhotos");
-            if (savedFavorites) {
-                setFavoritePhotos(JSON.parse(savedFavorites));
+            const storedUser = await AsyncStorage.getItem("user");
+            if (!storedUser) {
+                Alert.alert("Thông báo", "Vui lòng đăng nhập để xem ảnh yêu thích");
+                return;
             }
+            
+            const parsedUser = JSON.parse(storedUser);
+            const userId = parsedUser._id;
+            
+            // Sử dụng service để lấy danh sách favorites từ API
+            const userFavorites = await getFavoritesByUserId(userId);
+            
+            // Chuyển đổi dữ liệu để hiển thị
+            const formattedData = userFavorites.map((favorite) => {
+                const photo = favorite.photoId;
+                return {
+                    id: photo._id,
+                    favoriteId: favorite._id,
+                    image: photo.image,
+                    title: photo.title,
+                    userId: userId
+                };
+            });
+            
+            setFavoritePhotos(formattedData);
         } catch (error) {
             console.log("Lỗi khi tải danh sách yêu thích:", error);
+            Alert.alert("Lỗi", "Không thể tải danh sách ảnh yêu thích. Vui lòng thử lại sau.");
         }
     };
 
@@ -32,27 +55,38 @@ const FavouritePhotos = ({ route }) => {
         }, [])
     );
 
-    const removeFavorite = async (photoId) => {
-        const updatedFavorites = favoritePhotos.filter(photo => photo.id !== photoId);
-        setFavoritePhotos(updatedFavorites);
-        await AsyncStorage.setItem("favoritePhotos", JSON.stringify(updatedFavorites));
-
-        // Giảm số lượt thích
-        const savedLikes = await AsyncStorage.getItem("likes");
-        let updatedLikes = savedLikes ? JSON.parse(savedLikes) : {};
-
-        if (updatedLikes[photoId] && updatedLikes[photoId] > 0) {
-            updatedLikes[photoId] -= 1;
-        }
-
-        await AsyncStorage.setItem("likes", JSON.stringify(updatedLikes));
-
-        // Truyền lại danh sách yêu thích mới và số lượt thích về HomeScreen
-        if (route?.params?.updateFavorites) {
-            route.params.updateFavorites(updatedFavorites);
-        }
-        if (route?.params?.updateLikes) {
-            route.params.updateLikes(updatedLikes);
+    const handleRemoveFavorite = async (item) => {
+        try {
+            // Sử dụng service để xóa favorite từ database
+            await removeFavorite(item.favoriteId);
+            
+            // Cập nhật UI
+            const updatedFavorites = favoritePhotos.filter(photo => photo.favoriteId !== item.favoriteId);
+            setFavoritePhotos(updatedFavorites);
+            
+            // Giảm số lượt thích
+            const savedLikes = await AsyncStorage.getItem("likes");
+            let updatedLikes = savedLikes ? JSON.parse(savedLikes) : {};
+            
+            if (updatedLikes[item.id] && updatedLikes[item.id] > 0) {
+                updatedLikes[item.id] -= 1;
+            }
+            
+            await AsyncStorage.setItem("likes", JSON.stringify(updatedLikes));
+            
+            // Thông báo xóa thành công
+            Alert.alert("Thành công", "Đã xóa ảnh khỏi danh sách yêu thích");
+            
+            // Truyền lại danh sách yêu thích mới và số lượt thích về HomeScreen
+            if (route?.params?.updateFavorites) {
+                route.params.updateFavorites(updatedFavorites);
+            }
+            if (route?.params?.updateLikes) {
+                route.params.updateLikes(updatedLikes);
+            }
+        } catch (error) {
+            console.error("Lỗi khi xóa ảnh yêu thích:", error);
+            Alert.alert("Lỗi", "Không thể xóa ảnh khỏi danh sách yêu thích. Vui lòng thử lại sau.");
         }
     };
 
@@ -79,9 +113,11 @@ const FavouritePhotos = ({ route }) => {
                 numColumns={2}
                 renderItem={({ item }) => (
                     <View style={styles.card}>
-                        <Image source={{ uri: item.image?.thumbnail }} style={styles.image} />
+                        <TouchableOpacity onPress={() => navigation.navigate('PhotoDetails', { photo: { _id: item.id, title: item.title, image: item.image } })}>
+                            <Image source={{ uri: item.image?.thumbnail || (item.image?.url && item.image.url[0]) }} style={styles.image} />
+                        </TouchableOpacity>
                         <Text style={styles.photoTitle}>{item.title}</Text>
-                        <TouchableOpacity style={styles.removeButton} onPress={() => removeFavorite(item.id)}>
+                        <TouchableOpacity style={styles.removeButton} onPress={() => handleRemoveFavorite(item)}>
                             <FontAwesome name="trash" size={20} color="white" />
                         </TouchableOpacity>
                     </View>

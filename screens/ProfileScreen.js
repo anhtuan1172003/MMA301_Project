@@ -56,7 +56,14 @@ function ProfileScreen({ navigation }) {
       console.log("Fetching user data for ID:", id); // Thêm log ID đang fetch
       const response = await axios.get(`${API_URL}/${id}`);
       console.log("API Response:", response.data); // Thêm log response từ API
-      setUser(response.data);
+      
+      // Check if response.data has a data property (like in Login.js)
+      if (response.data && response.data.data) {
+        setUser(response.data.data);
+      } else {
+        // If not, use response.data directly
+        setUser(response.data);
+      }
     } catch (error) {
       console.error("Error fetching user data:", error); // Thêm log chi tiết lỗi
       Alert.alert("Lỗi", "Không thể lấy thông tin người dùng.");

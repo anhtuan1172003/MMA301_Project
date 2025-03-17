@@ -3,7 +3,7 @@ import { View, Text, TextInput, Button, Alert, ActivityIndicator } from 'react-n
 import { Picker } from '@react-native-picker/picker';
 import axios from 'axios';
 
-const API_URL = 'https://mma-json-deploy.onrender.com/users/2';
+const API_URL = 'https://mma301-project-be-9e9f.onrender.com/users';
 
 const cities = [
   'An Giang', 'Bà Rịa - Vũng Tàu', 'Bạc Liêu', 'Bắc Giang', 'Bắc Kạn', 'Bắc Ninh', 'Bến Tre',
@@ -18,10 +18,11 @@ function ProfileEdit({ route, navigation }) {
   const handleUpdate = async () => {
     setLoading(true);
     try {
-      await axios.put(API_URL, user);
+      await axios.put(`${API_URL}/${user._id}`, user);
       Alert.alert('Success', 'Profile updated successfully.');
       navigation.goBack(); // Quay lại ProfileScreen
     } catch (error) {
+      console.error('Update error:', error);
       Alert.alert('Error', 'Failed to update profile.');
     } finally {
       setLoading(false);

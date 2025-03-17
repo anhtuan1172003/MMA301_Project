@@ -8,9 +8,12 @@ import {
   ActivityIndicator,
   Alert,
   Text,
+  TouchableOpacity,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { getFavoritesByUserId } from "../../services/FavoriteService";
 
 const { width } = Dimensions.get("window");
 const imageSize = (width - 47) / 3; // 3 images per row with padding
@@ -19,10 +22,18 @@ const FavoriteTab = () => {
   const [favorites, setFavorites] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const navigation = useNavigation();
 
   useEffect(() => {
     fetchUserFavorites();
   }, []);
+
+  // Add useFocusEffect to reload data when tab is focused
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchUserFavorites();
+    }, [])
+  );
 
   const fetchUserFavorites = async () => {
     try {
@@ -34,14 +45,20 @@ const FavoriteTab = () => {
       const parsedUser = JSON.parse(storedUser);
       const userId = parsedUser._id;
 
-      const response = await axios.get(
-        `https://mma301-project-be-9e9f.onrender.com/photos`
-      );
-      const favoritePhotos = response.data;
-      const formattedData = favoritePhotos.map((photo) => ({
-        id: photo._id || photo.id,
-        uri: photo.image.thumbnail || photo.image.url[0],
-      }));
+      // Sử dụng service để lấy danh sách favorites từ API
+      const userFavorites = await getFavoritesByUserId(userId);
+      
+      // Chuyển đổi dữ liệu để hiển thị
+      const formattedData = userFavorites.map((favorite) => {
+        const photo = favorite.photoId;
+        return {
+          id: photo._id,
+          favoriteId: favorite._id,
+          uri: photo.image?.thumbnail || (photo.image?.url && photo.image.url[0]),
+          title: photo.title,
+          userId: userId
+        };
+      });
 
       setFavorites(formattedData);
     } catch (error) {
@@ -57,13 +74,21 @@ const FavoriteTab = () => {
   };
 
   const renderItem = ({ item }) => (
-    <View style={styles.imageContainer}>
+    <TouchableOpacity 
+      style={styles.imageContainer}
+      onPress={() => navigation.navigate('PhotoDetails', { photo: { _id: item.id, title: item.title, image: { thumbnail: item.uri, url: [item.uri] } } })}
+    >
       <Image
         source={{ uri: item.uri }}
         style={styles.image}
         onError={(e) => console.log("Image failed to load:", item.uri)}
       />
-    </View>
+      {item.title && (
+        <Text style={styles.imageTitle} numberOfLines={1}>
+          {item.title}
+        </Text>
+      )}
+    </TouchableOpacity>
   );
 
   if (loading) {
@@ -110,11 +135,19 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     margin: 1,
+    position: "relative",
   },
   image: {
     width: imageSize,
     height: imageSize,
     borderRadius: 5,
+  },
+  imageTitle: {
+    fontSize: 12,
+    color: "#333",
+    marginTop: 2,
+    textAlign: "center",
+    width: imageSize,
   },
   loadingContainer: {
     flex: 1,

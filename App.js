@@ -7,6 +7,7 @@ import Signup from "./screens/Signup";
 import Welcome from "./screens/Welcome";
 import MainApp from "./MainApp"
 import FavouritePhotos from "./screens/FavouritePhotos";
+import PhotoDetails from "./screens/PhotoDetails";
 
 const Stack = createNativeStackNavigator()
 
@@ -30,6 +31,7 @@ function Navigation() {
           <>
           <Stack.Screen name="MainApp" component={MainApp} />
           <Stack.Screen name="FavouritePhotos" component={FavouritePhotos} />
+          <Stack.Screen name="PhotoDetails" component={PhotoDetails} />
           </>
         )}
       </Stack.Navigator>
