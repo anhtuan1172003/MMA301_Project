@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
-    View, Text, TextInput, FlatList, Image, TouchableOpacity, StyleSheet
+    View, Text, TextInput, FlatList, Image, TouchableOpacity, StyleSheet, ActivityIndicator
 } from "react-native";
 import axios from "axios";
 import { FontAwesome } from "@expo/vector-icons";
@@ -12,12 +12,29 @@ const HomeScreen = () => {
     const [search, setSearch] = useState("");
     const [favoritePhotos, setFavoritePhotos] = useState([]);
     const [likes, setLikes] = useState({});
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const navigation = useNavigation();
 
     useEffect(() => {
+        setLoading(true);
         axios.get("https://mma301-project-be-9e9f.onrender.com/photos")
-            .then(response => setPhotos(response.data))
-            .catch(err => console.log("Error: " + err));
+            .then(response => {
+                if (response.data && response.data.data) {
+                    setPhotos(response.data.data);
+                } else {
+                    console.log("Dữ liệu không đúng định dạng:", response.data);
+                    setPhotos([]);
+                }
+            })
+            .catch(err => {
+                console.log("Error: " + err);
+                setError("Không thể tải dữ liệu");
+                setPhotos([]);
+            })
+            .finally(() => {
+                setLoading(false);
+            });
     }, []);
 
     const loadFavorites = async () => {
@@ -73,29 +90,31 @@ const HomeScreen = () => {
         await AsyncStorage.setItem("likes", JSON.stringify(updatedLikes));
     };
 
-    return (
-        <View style={styles.container}>
-            <View style={styles.header}>
-                <TextInput
-                    style={styles.searchBox}
-                    placeholder="Nhập tiêu đề..."
-                    onChangeText={text => setSearch(text)}
-                />
-                <TouchableOpacity 
-                    style={styles.favoriteListButton} 
-                    onPress={() => navigation.navigate("FavouritePhotos", { 
-                        updateFavorites: setFavoritePhotos, 
-                        updateLikes: setLikes 
-                    })}
-                >
-                    <FontAwesome name="heart" size={24} color="white" />
-                </TouchableOpacity>
-            </View>
+    const renderContent = () => {
+        if (loading) {
+            return (
+                <View style={styles.centerContainer}>
+                    <ActivityIndicator size="large" color="#007bff" />
+                    <Text style={styles.loadingText}>Đang tải dữ liệu...</Text>
+                </View>
+            );
+        }
 
+        if (error) {
+            return (
+                <View style={styles.centerContainer}>
+                    <Text style={styles.errorText}>{error}</Text>
+                </View>
+            );
+        }
+
+        const filteredPhotos = photos.filter(photo => 
+            search === "" || (photo.title && photo.title.toUpperCase().includes(search.toUpperCase()))
+        );
+
+        return (
             <FlatList
-                data={photos.filter(photo => 
-                    search === "" || photo.title.toUpperCase().includes(search.toUpperCase())
-                )}
+                data={filteredPhotos}
                 keyExtractor={item => item.id.toString()}
                 renderItem={({ item }) => (
                     <View style={styles.photoContainer}>
@@ -118,6 +137,29 @@ const HomeScreen = () => {
                 )}
                 ListEmptyComponent={<Text style={styles.notFound}>Không tìm thấy ảnh</Text>}
             />
+        );
+    };
+
+    return (
+        <View style={styles.container}>
+            <View style={styles.header}>
+                <TextInput
+                    style={styles.searchBox}
+                    placeholder="Nhập tiêu đề..."
+                    onChangeText={text => setSearch(text)}
+                />
+                <TouchableOpacity 
+                    style={styles.favoriteListButton} 
+                    onPress={() => navigation.navigate("FavouritePhotos", { 
+                        updateFavorites: setFavoritePhotos, 
+                        updateLikes: setLikes 
+                    })}
+                >
+                    <FontAwesome name="heart" size={24} color="white" />
+                </TouchableOpacity>
+            </View>
+
+            {renderContent()}
         </View>
     );
 };
@@ -135,5 +177,8 @@ const styles = StyleSheet.create({
     favoriteButton: { marginBottom: 5 },
     likeCount: { fontSize: 16, fontWeight: "bold", color: "black", marginBottom: 5 },
     description: { fontSize: 18, fontWeight: "bold", textAlign: "left" },
-    notFound: { textAlign: "center", fontSize: 16, color: "red", marginVertical: 20 }
+    notFound: { textAlign: "center", fontSize: 16, color: "red", marginVertical: 20 },
+    centerContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+    loadingText: { marginTop: 10, fontSize: 16, color: "#007bff" },
+    errorText: { fontSize: 16, color: "red", textAlign: "center" }
 });

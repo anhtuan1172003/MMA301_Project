@@ -20,7 +20,7 @@ const Login = () => {
   const handleLogin = async () => {
     try {
       const response = await axios.get(`${API_URL}/users`)
-      const user = response.data.find((u) => u.account.email === email)
+      const user = response.data.data.find((u) => u.account.email === email)
 
       if (!user) {
         Alert.alert("Lỗi", "Email không tồn tại!")

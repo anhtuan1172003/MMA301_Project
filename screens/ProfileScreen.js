@@ -34,14 +34,18 @@ function ProfileScreen({ navigation }) {
   const getUserId = async () => {
     try {
       const storedUser = await AsyncStorage.getItem("user");
+      console.log("Stored user data:", storedUser); // Thêm log để kiểm tra dữ liệu
       if (storedUser) {
         const parsedUser = JSON.parse(storedUser);
+        console.log("Parsed user data:", parsedUser); // Thêm log để kiểm tra dữ liệu đã parse
         fetchUserData(parsedUser._id);
       } else {
+        console.log("No user data found in AsyncStorage"); // Thêm log khi không tìm thấy dữ liệu
         Alert.alert("Lỗi", "Không tìm thấy thông tin người dùng.");
         setLoading(false);
       }
     } catch (error) {
+      console.error("Error getting user ID:", error); // Thêm log chi tiết lỗi
       Alert.alert("Lỗi", "Không thể lấy ID người dùng.");
       setLoading(false);
     }
@@ -49,9 +53,12 @@ function ProfileScreen({ navigation }) {
 
   const fetchUserData = async (id) => {
     try {
+      console.log("Fetching user data for ID:", id); // Thêm log ID đang fetch
       const response = await axios.get(`${API_URL}/${id}`);
+      console.log("API Response:", response.data); // Thêm log response từ API
       setUser(response.data);
     } catch (error) {
+      console.error("Error fetching user data:", error); // Thêm log chi tiết lỗi
       Alert.alert("Lỗi", "Không thể lấy thông tin người dùng.");
     } finally {
       setLoading(false);
@@ -71,6 +78,14 @@ function ProfileScreen({ navigation }) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <ActivityIndicator size="large" color={COLORS.white} />
+      </View>
+    );
+  }
+
+  if (!user) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <Text style={{ color: COLORS.white }}>Không tìm thấy thông tin người dùng</Text>
       </View>
     );
   }
