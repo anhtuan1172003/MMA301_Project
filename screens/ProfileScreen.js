@@ -17,11 +17,13 @@ import Button from "../components/Button";
 import PostTab from "./TabProfile/PostTab";
 import FavoriteTab from "./TabProfile/FavoriteTab";
 import TaggedTab from "./TabProfile/TaggedTab";
+import { useAuth } from "../AuthContext";
 
 const API_URL = "https://mma301-project-be-9e9f.onrender.com/users";
 const Tab = createMaterialTopTabNavigator();
 
 function ProfileScreen({ navigation }) {
+  const { logout } = useAuth();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -58,11 +60,8 @@ function ProfileScreen({ navigation }) {
 
   const handleLogout = async () => {
     try {
-      await AsyncStorage.removeItem("user");
-      await AsyncStorage.removeItem("userToken");
-      Alert.alert("Đã đăng xuất", "Bạn đã đăng xuất thành công!", [
-        { text: "OK", onPress: () => navigation.replace("Login") },
-      ]);
+      await logout();
+      Alert.alert("Đã đăng xuất", "Bạn đã đăng xuất thành công!");
     } catch (error) {
       Alert.alert("Lỗi", "Có lỗi xảy ra khi đăng xuất.");
     }
