@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
-    View, Text, TextInput, FlatList, Image, TouchableOpacity, StyleSheet, ActivityIndicator, Alert
+    View, Text, TextInput, FlatList, Image, TouchableOpacity, StyleSheet, 
+    ActivityIndicator, Alert, SafeAreaView, StatusBar, RefreshControl, Platform
 } from "react-native";
 import axios from "axios";
 import { FontAwesome } from "@expo/vector-icons";
@@ -15,6 +16,7 @@ const HomeScreen = () => {
     const [favoritePhotos, setFavoritePhotos] = useState([]);
     const [likes, setLikes] = useState({});
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState(null);
     const navigation = useNavigation();
 
@@ -36,7 +38,13 @@ const HomeScreen = () => {
             })
             .finally(() => {
                 setLoading(false);
+                setRefreshing(false);
             });
+    };
+
+    const onRefresh = () => {
+        setRefreshing(true);
+        fetchPhotos();
     };
 
     useEffect(() => {
@@ -61,7 +69,6 @@ const HomeScreen = () => {
             const parsedUser = JSON.parse(storedUser);
             const userId = parsedUser._id;
             
-            // Kiểm tra trạng thái yêu thích cho mỗi ảnh
             if (photos && photos.length > 0) {
                 const favoriteStatuses = await Promise.all(
                     photos.map(async (photo) => {
@@ -73,7 +80,6 @@ const HomeScreen = () => {
                     })
                 );
                 
-                // Lọc ra những ảnh đã được yêu thích
                 const favorites = favoriteStatuses.filter(photo => photo.isFavorite);
                 setFavoritePhotos(favorites);
             }
@@ -118,14 +124,11 @@ const HomeScreen = () => {
             const parsedUser = JSON.parse(storedUser);
             const userId = parsedUser._id;
             
-            // Sử dụng service để toggle favorite
             const result = await toggleFavorite(photo._id, userId);
             
-            // Cập nhật UI
             let updatedLikes = { ...likes };
             
             if (result.isFavorite) {
-                // Thêm vào danh sách yêu thích
                 const newFavoritePhoto = {
                     ...photo,
                     isFavorite: true,
@@ -134,7 +137,6 @@ const HomeScreen = () => {
                 setFavoritePhotos([...favoritePhotos, newFavoritePhoto]);
                 updatedLikes[photo._id] = (updatedLikes[photo._id] || 0) + 1;
             } else {
-                // Xóa khỏi danh sách yêu thích
                 const updatedFavorites = favoritePhotos.filter(fav => fav._id !== photo._id);
                 setFavoritePhotos(updatedFavorites);
                 updatedLikes[photo._id] = Math.max((updatedLikes[photo._id] || 0) - 1, 0);
@@ -143,7 +145,6 @@ const HomeScreen = () => {
             setLikes(updatedLikes);
             await AsyncStorage.setItem("likes", JSON.stringify(updatedLikes));
             
-            // Tải lại danh sách yêu thích
             loadFavorites();
         } catch (error) {
             console.error("Lỗi khi cập nhật trạng thái yêu thích:", error);
@@ -151,8 +152,50 @@ const HomeScreen = () => {
         }
     };
 
+    const renderItem = ({ item }) => {
+        const isFavorite = favoritePhotos.some(fav => fav._id === item._id);
+        
+        return (
+            <View style={styles.photoContainer}>
+                {/* Header của bài đăng */}
+                <View style={styles.postHeader}>
+                    <Text style={styles.postTitle}>{item.title}</Text>
+                </View>
+                
+                {/* Ảnh */}
+                <TouchableOpacity 
+                    style={styles.imageWrapper}
+                    onPress={() => navigation.navigate('PhotoDetails', { 
+                        photo: { _id: item._id, title: item.title, image: item.image, userId: item.userId } 
+                    })}>
+                    <Image 
+                        source={{ uri: item.image?.thumbnail }} 
+                        style={styles.image} 
+                        resizeMode="cover"
+                    />
+                </TouchableOpacity>
+                
+                {/* Action bar */}
+                <View style={styles.infoContainer}>
+                    <TouchableOpacity
+                        style={styles.favoriteButton}
+                        onPress={() => handleToggleFavorite(item)}
+                    >
+                        <FontAwesome
+                            name={isFavorite ? "heart" : "heart-o"}
+                            size={24}
+                            color="red"
+                        />
+                    </TouchableOpacity>
+                    <Text style={styles.likeCount}>{likes[item._id] || 0} lượt thích</Text>
+                    <Text style={styles.description}>{item.title}</Text>
+                </View>
+            </View>
+        );
+    };
+
     const renderContent = () => {
-        if (loading) {
+        if (loading && !refreshing) {
             return (
                 <View style={styles.centerContainer}>
                     <ActivityIndicator size="large" color="#007bff" />
@@ -165,6 +208,9 @@ const HomeScreen = () => {
             return (
                 <View style={styles.centerContainer}>
                     <Text style={styles.errorText}>{error}</Text>
+                    <TouchableOpacity style={styles.retryButton} onPress={fetchPhotos}>
+                        <Text style={styles.retryText}>Thử lại</Text>
+                    </TouchableOpacity>
                 </View>
             );
         }
@@ -177,40 +223,35 @@ const HomeScreen = () => {
             <FlatList
                 data={filteredPhotos}
                 keyExtractor={item => item._id.toString()}
-                renderItem={({ item }) => (
-                    <View style={styles.photoContainer}>
-                        <TouchableOpacity 
-                            style={styles.imageWrapper}
-                            onPress={() => navigation.navigate('PhotoDetails', { photo: { _id: item._id, title: item.title, image: item.image, userId: item.userId } })}>
-                            <Image source={{ uri: item.image?.thumbnail }} style={styles.image} />
-                        </TouchableOpacity>
-                        <View style={styles.infoContainer}>
-                            <TouchableOpacity
-                                style={styles.favoriteButton}
-                                onPress={() => handleToggleFavorite(item)}
-                            >
-                                <FontAwesome
-                                    name={favoritePhotos.some(fav => fav._id === item._id) ? "heart" : "heart-o"}
-                                    size={24}
-                                    color="red"/>
-                            </TouchableOpacity>
-                            <Text style={styles.likeCount}>{likes[item._id] || 0} lượt thích</Text>
-                            <Text style={styles.description}>{item.title}</Text>
-                        </View>
-                    </View>
-                )}
-                ListEmptyComponent={<Text style={styles.notFound}>Không tìm thấy ảnh</Text>}
+                renderItem={renderItem}
+                showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl 
+                        refreshing={refreshing} 
+                        onRefresh={onRefresh}
+                        colors={["#007bff"]}
+                        tintColor="#007bff"
+                    />
+                }
+                ListEmptyComponent={
+                    <Text style={styles.notFound}>Không tìm thấy ảnh</Text>
+                }
             />
         );
     };
 
     return (
-        <View style={styles.container}>
+        <SafeAreaView style={styles.container}>
+            <StatusBar barStyle="dark-content" backgroundColor="#45f7f4" />
+            
+            {/* Header */}
             <View style={styles.header}>
+                <Text style={styles.appTitle}>Picly</Text>
                 <TextInput
                     style={styles.searchBox}
                     placeholder="Nhập tiêu đề..."
                     onChangeText={text => setSearch(text)}
+                    value={search}
                 />
                 <TouchableOpacity 
                     style={styles.postButton} 
@@ -219,28 +260,183 @@ const HomeScreen = () => {
                     <FontAwesome name="plus" size={24} color="white" />
                 </TouchableOpacity>
             </View>
-
+            
+            {/* Content */}
             {renderContent()}
-        </View>
+            <View style={styles.bottomNav}>
+                <TouchableOpacity style={styles.navButton}>
+                    <FontAwesome name="home" size={24} color="#262626" />
+                </TouchableOpacity>
+                <TouchableOpacity 
+                    style={styles.navButton}
+                    onPress={() => navigation.navigate("PostScreen")}
+                >
+                    <FontAwesome name="plus-square-o" size={24} color="#8e8e8e" />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.navButton}>
+                    <FontAwesome name="heart-o" size={24} color="#8e8e8e" />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.navButton}
+                    onPress={() => navigation.navigate("ProfileStack")}>
+                    <FontAwesome name="user-o" size={24} color="#8e8e8e" />
+                </TouchableOpacity>
+            </View>
+        </SafeAreaView>
     );
 };
 
 export default HomeScreen;
 
 const styles = StyleSheet.create({
-    imageWrapper: { width: "100%", height: 400 },
-    container: { flex: 1, padding: 10, backgroundColor: "#45f7f4", paddingVertical: 50 },
-    header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
-    searchBox: { flex: 1, borderWidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 10, fontSize: 16, backgroundColor: "#fff" },
-    postButton: { marginLeft: 10, backgroundColor: "#007bff", padding: 10, borderRadius: 8 },
-    photoContainer: { alignItems: "center", marginBottom: 20, backgroundColor: "#fff", borderRadius: 10, overflow: "hidden" },
-    image: { width: "100%", height: 400, resizeMode: "cover" },
-    infoContainer: { flexDirection: "column", alignItems: "flex-start", width: "100%", padding: 10 },
-    favoriteButton: { marginBottom: 5 },
-    likeCount: { fontSize: 16, fontWeight: "bold", color: "black", marginBottom: 5 },
-    description: { fontSize: 18, fontWeight: "bold", textAlign: "left" },
-    notFound: { textAlign: "center", fontSize: 16, color: "red", marginVertical: 20 },
-    centerContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
-    loadingText: { marginTop: 10, fontSize: 16, color: "#007bff" },
-    errorText: { fontSize: 16, color: "red", textAlign: "center" }
+    container: { 
+        flex: 1, 
+        backgroundColor: "#45f7f4",
+        paddingTop: 10
+    },
+    header: { 
+        flexDirection: "row", 
+        alignItems: "center", 
+        justifyContent: "space-between", 
+        marginBottom: 10,
+        paddingHorizontal: 10
+    },
+    appTitle: {
+        fontSize: 50,
+        // fontWeight: "bold",
+        // color: "#007bff",
+        marginRight: 10,
+            fontWeight: "700",
+            color: "#262626",
+            fontStyle: "italic"
+    },
+    searchBox: { 
+        flex: 1, 
+        borderWidth: 1, 
+        borderColor: "#ccc", 
+        borderRadius: 8, 
+        padding: 10, 
+        fontSize: 16, 
+        backgroundColor: "#fff" 
+    },
+    postButton: { 
+        marginLeft: 10, 
+        backgroundColor: "#007bff", 
+        padding: 10, 
+        borderRadius: 8 
+    },
+    photoContainer: { 
+        marginBottom: 20, 
+        backgroundColor: "#fff", 
+        borderRadius: 10, 
+        overflow: "hidden",
+        marginHorizontal: 10,
+        elevation: 2,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4
+    },
+    postHeader: {
+        padding: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: "#f0f0f0"
+    },
+    postTitle: {
+        fontSize: 16,
+        fontWeight: "bold"
+    },
+    imageWrapper: { 
+        width: "100%", 
+        height: 400 
+    },
+    image: { 
+        width: "100%", 
+        height: 400, 
+        resizeMode: "cover" 
+    },
+    infoContainer: { 
+        flexDirection: "column", 
+        alignItems: "flex-start", 
+        width: "100%", 
+        padding: 10 
+    },
+    favoriteButton: { 
+        marginBottom: 5 
+    },
+    likeCount: { 
+        fontSize: 16, 
+        fontWeight: "bold", 
+        color: "black", 
+        marginBottom: 5 
+    },
+    description: { 
+        fontSize: 18, 
+        fontWeight: "bold", 
+        textAlign: "left" 
+    },
+    centerContainer: { 
+        flex: 1, 
+        justifyContent: "center", 
+        alignItems: "center" 
+    },
+    loadingText: { 
+        marginTop: 10, 
+        fontSize: 16, 
+        color: "#007bff" 
+    },
+    errorText: { 
+        fontSize: 16, 
+        color: "red", 
+        textAlign: "center" 
+    },
+    notFound: { 
+        textAlign: "center", 
+        fontSize: 16, 
+        color: "red", 
+        marginVertical: 20 
+    },
+    retryButton: {
+        marginTop: 20,
+        paddingVertical: 8,
+        paddingHorizontal: 20,
+        backgroundColor: "#007bff",
+        borderRadius: 8
+    },
+    retryText: {
+        color: "#fff",
+        fontWeight: "600"
+    },
+    bottomNav: {
+        flexDirection: "row",
+        position: "absolute",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        ...Platform.select({
+            ios: {
+                height: 80,
+            },
+            android: {
+                height: 50,
+            },
+            default: {
+              // other platforms, web for example
+              height: 50,
+            },
+          }),
+        backgroundColor: "#fff",
+        borderTopWidth: 0.5,
+        borderTopColor: "#dbdbdb",
+        justifyContent: "space-around",
+        alignItems: "center",
+        paddingVertical: 8
+    },
+    navButton: {
+        paddingHorizontal: 16,
+        ...Platform.select({
+            ios: {
+                marginBottom: 40,
+            },
+          }),
+    }
 });

@@ -6,6 +6,9 @@ import {
   Pressable,
   ActivityIndicator,
   Alert,
+  StyleSheet,
+  Platform,
+  TouchableOpacity
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -17,7 +20,9 @@ import Button from "../components/Button";
 import PostTab from "./TabProfile/PostTab";
 import FavoriteTab from "./TabProfile/FavoriteTab";
 import TaggedTab from "./TabProfile/TaggedTab";
+import { FontAwesome } from "@expo/vector-icons";
 import { useAuth } from "../AuthContext";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const API_URL = "https://mma301-project-be-9e9f.onrender.com/users";
 const Tab = createMaterialTopTabNavigator();
@@ -98,10 +103,12 @@ function ProfileScreen({ navigation }) {
   }
 
   return (
+    
     <LinearGradient
-      style={{ flex: 1, paddingHorizontal: 20, paddingTop: 20 }}
+      style={{ flex: 1 }}
       colors={[COLORS.greenInfo, COLORS.info]}
     >
+      <SafeAreaView style={styles.container}>
       <View style={{ alignItems: "center", marginBottom: 10 }}>
         <Image
           source={require("../assets/p1.png")}
@@ -161,7 +168,7 @@ function ProfileScreen({ navigation }) {
         style={{
           flexDirection: "row",
           justifyContent: "space-between",
-          marginBottom: 5,
+          marginBottom:50,
         }}
       >
         <Button
@@ -176,8 +183,72 @@ function ProfileScreen({ navigation }) {
           style={{ marginTop: 12 }}
         />
       </View>
+      <View style={styles.bottomNav}>
+                <TouchableOpacity style={styles.navButton}
+                onPress={() => navigation.navigate("Home")}>
+                    <FontAwesome name="home" size={24} color="#8e8e8e" />
+                </TouchableOpacity>
+                <TouchableOpacity 
+                    style={styles.navButton}
+                    onPress={() => navigation.navigate("PostScreen")}
+                >
+                    <FontAwesome name="plus-square-o" size={24} color="#8e8e8e" />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.navButton}>
+                    <FontAwesome name="heart-o" size={24} color="#8e8e8e" />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.navButton}
+                    onPress={() => navigation.navigate("ProfileStack")}>
+                    <FontAwesome name="user-o" size={24} color="#262626" />
+                </TouchableOpacity>
+            </View>
+            </SafeAreaView>
     </LinearGradient>
+    
   );
 }
 
 export default ProfileScreen;
+
+const styles = StyleSheet.create({
+  container: { 
+      flex: 1, 
+      backgroundColor: "#45f7f4",
+      paddingHorizontal: 20, 
+      paddingTop: 20
+
+  },
+  bottomNav: {
+      flexDirection: "row",
+      position: "absolute",
+      bottom: 0,
+      left: 0,
+      right: 0,
+      ...Platform.select({
+          ios: {
+              height: 80,
+          },
+          android: {
+              height: 50,
+          },
+          default: {
+            // other platforms, web for example
+            height: 50,
+          },
+        }),
+      backgroundColor: "#fff",
+      borderTopWidth: 0.5,
+      borderTopColor: "#dbdbdb",
+      justifyContent: "space-around",
+      alignItems: "center",
+      paddingVertical: 8
+  },
+  navButton: {
+      paddingHorizontal: 16,
+      ...Platform.select({
+          ios: {
+              marginBottom: 40,
+          },
+        }),
+  }
+});

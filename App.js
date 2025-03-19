@@ -9,6 +9,7 @@ import MainApp from "./MainApp"
 import FavouritePhotos from "./screens/FavouritePhotos";
 import PhotoDetails from "./screens/PhotoDetails";
 import PostScreen from "./screens/PostScreen";
+import ProfileStack from "./screens/ProfileStack";
 
 const Stack = createNativeStackNavigator()
 
@@ -35,6 +36,7 @@ function Navigation() {
           <Stack.Screen name="PhotoDetails" component={PhotoDetails} />
           <Stack.Screen name="PostScreen" component={PostScreen} />
           <Stack.Screen name="Home" component={Home} />
+          <Stack.Screen name="ProfileStack" component={ProfileStack} />
           </>
         )}
       </Stack.Navigator>

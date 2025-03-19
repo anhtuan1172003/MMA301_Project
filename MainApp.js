@@ -11,10 +11,11 @@ export default function MainApp() {
 
   return (
     <Tab.Navigator screenOptions={{ headerShown: false }}>
-      <Tab.Screen name="Home" component={Home} />
+      <Tab.Screen name="Home" component={Home} options={{ tabBarStyle: { display: 'none' } }}/>
       <Tab.Screen
         name="Profile"
         component={ProfileStack}
+        options={{ tabBarStyle: { display: 'none' } }}
       />
     </Tab.Navigator>
   )

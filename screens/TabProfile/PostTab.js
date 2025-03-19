@@ -58,6 +58,7 @@ const PostTab = () => {
         return {
           id: photo._id || photo.id,
           title: photo.title,
+          userId: photo.userId,
           uri: photo.image.thumbnail || (urls && urls.length > 0 ? urls[0] : null),
           allImages: urls || [],
         };
@@ -86,6 +87,7 @@ const PostTab = () => {
         photo: { 
           _id: item.id, 
           title: item.title, 
+          userId: item.userId,
           image: { 
             thumbnail: item.uri, 
             url: item.allImages 
