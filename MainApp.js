@@ -15,10 +15,6 @@ export default function MainApp() {
       <Tab.Screen
         name="Profile"
         component={ProfileStack}
-        options={{
-          headerShown: true,
-          headerRight: () => <Button onPress={logout} title="Logout" />,
-        }}
       />
     </Tab.Navigator>
   )
