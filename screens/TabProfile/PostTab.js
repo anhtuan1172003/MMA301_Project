@@ -8,8 +8,10 @@ import {
   ActivityIndicator,
   Alert,
   Text,
+  TouchableOpacity
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useNavigation, useFocusEffect, useRoute } from "@react-navigation/native";
 import axios from "axios";
 
 const { width } = Dimensions.get("window");
@@ -19,6 +21,7 @@ const PostTab = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const navigation = useNavigation();
 
   useEffect(() => {
     fetchUserPhotos();
@@ -39,6 +42,7 @@ const PostTab = () => {
       const photos = response.data.data;
       const formattedData = photos.map((photo) => ({
         id: photo._id || photo.id,
+        title: photo.title,
         uri: photo.image.thumbnail || photo.image.url[0],
       }));
 
@@ -53,13 +57,25 @@ const PostTab = () => {
   };
 
   const renderItem = ({ item }) => (
-    <View style={styles.imageContainer}>
+    <TouchableOpacity 
+      style={styles.imageContainer}
+      onPress={() => navigation.navigate('PhotoDetails', { 
+        photo: { 
+          _id: item.id, 
+          title: item.title, 
+          image: { 
+            thumbnail: item.uri, 
+            url: [item.uri] 
+          } 
+        }
+      })}
+    >
       <Image
         source={{ uri: item.uri }}
         style={styles.image}
         onError={(e) => console.log("Image failed to load:", item.uri)}
       />
-    </View>
+    </TouchableOpacity>
   );
 
   if (loading) {

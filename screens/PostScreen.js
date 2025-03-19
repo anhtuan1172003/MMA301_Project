@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
     View,
     Text,
@@ -8,37 +8,59 @@ import {
     Image,
     Alert,
     ActivityIndicator,
-    FlatList
+    FlatList,
+    ScrollView,
+    Animated,
+    Dimensions,
+    SafeAreaView,
+    StatusBar
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { FontAwesome } from "@expo/vector-icons";
+import { FontAwesome, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { useNavigation } from "@react-navigation/native";
+
+const { width } = Dimensions.get("window");
 
 const PostScreen = () => {
     const [title, setTitle] = useState("");
     const [images, setImages] = useState([]);
     const [selectedThumbnailIndex, setSelectedThumbnailIndex] = useState(0);
     const [loading, setLoading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
     const navigation = useNavigation();
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+
+    // Animate the placeholder when no images are selected
+    React.useEffect(() => {
+        Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true
+        }).start();
+    }, []);
 
     const pickImage = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
         if (status !== "granted") {
-            Alert.alert("Thông báo", "Cần cấp quyền truy cập thư viện ảnh để tiếp tục");
+            Alert.alert("Quyền truy cập bị từ chối", 
+                "Cần cấp quyền truy cập thư viện ảnh để tiếp tục", 
+                [{ text: "Đã hiểu" }]);
             return;
         }
 
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
-
-            quality: 1,
+            allowsMultipleSelection: true,
+            quality: 0.8,
+            selectionLimit: 10,
         });
 
         if (!result.canceled) {
-            setImages(prev => [...prev, ...result.assets.map(asset => asset.uri)]);
+            const newImages = result.assets.map(asset => asset.uri);
+            setImages(prev => [...prev, ...newImages]);
             if (images.length === 0) setSelectedThumbnailIndex(0);
         }
     };
@@ -47,13 +69,14 @@ const PostScreen = () => {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
 
         if (status !== "granted") {
-            Alert.alert("Thông báo", "Cần cấp quyền truy cập camera để tiếp tục");
+            Alert.alert("Quyền truy cập bị từ chối", 
+                "Cần cấp quyền truy cập camera để tiếp tục", 
+                [{ text: "Đã hiểu" }]);
             return;
         }
 
         const result = await ImagePicker.launchCameraAsync({
-
-            quality: 1,
+            quality: 0.8,
         });
 
         if (!result.canceled) {
@@ -62,15 +85,14 @@ const PostScreen = () => {
         }
     };
 
-    
     const handlePost = async () => {
         if (!title.trim()) {
-            Alert.alert("Thông báo", "Vui lòng nhập tiêu đề cho bài viết");
+            Alert.alert("Thiếu thông tin", "Vui lòng nhập tiêu đề cho bài viết", [{ text: "Đã hiểu" }]);
             return;
         }
     
         if (images.length === 0) {
-            Alert.alert("Thông báo", "Vui lòng chọn ảnh cho bài viết");
+            Alert.alert("Thiếu thông tin", "Vui lòng chọn ít nhất một ảnh cho bài viết", [{ text: "Đã hiểu" }]);
             return;
         }
     
@@ -79,18 +101,22 @@ const PostScreen = () => {
             const storedUser = await AsyncStorage.getItem("user");
     
             if (!storedUser) {
-                Alert.alert("Thông báo", "Vui lòng đăng nhập để đăng bài");
+                Alert.alert("Chưa đăng nhập", "Vui lòng đăng nhập để đăng bài", [{ text: "Đã hiểu" }]);
+                setLoading(false);
                 return;
             }
     
             const parsedUser = JSON.parse(storedUser);
     
+            // Show progress updates
+            let completedUploads = 0;
+            
             // Prepare Cloudinary upload data
-            const uploadPromises = images.map(async (uri) => {
+            const uploadPromises = images.map(async (uri, index) => {
                 const cloudinaryData = new FormData();
                 cloudinaryData.append("file", {
                     uri: uri,
-                    name: 'upload.jpg',
+                    name: `upload_${index}.jpg`,
                     type: 'image/jpeg'
                 });
                 cloudinaryData.append("upload_preset", "MMA_Upload");
@@ -109,8 +135,13 @@ const PostScreen = () => {
     
                 if (!response.ok) {
                     const errorData = await response.json();
-                    throw new Error(`Cloudinary upload failed: ${errorData.error.message}`);
+                    throw new Error(`Tải ảnh lên thất bại: ${errorData.error?.message || 'Lỗi không xác định'}`);
                 }
+                
+                // Update progress
+                completedUploads++;
+                setUploadProgress((completedUploads / images.length) * 100);
+                
                 return response.json();
             });
     
@@ -120,8 +151,6 @@ const PostScreen = () => {
             const imageUrls = cloudinaryResults.map(result => result.secure_url);
             const thumbnailUrl = imageUrls[selectedThumbnailIndex];
             
-            // IMPORTANT: Send the first URL as a string, not as an array
-            // This is because the backend wraps it in an array again
             const postData = {
                 title: title,
                 userId: parsedUser._id,
@@ -130,8 +159,6 @@ const PostScreen = () => {
                     thumbnail: thumbnailUrl
                 }
             };
-            
-            console.log("Sending data:", JSON.stringify(postData, null, 2));
     
             const postResponse = await axios.post(
                 "https://mma301-project-be-9e9f.onrender.com/photos",
@@ -145,8 +172,11 @@ const PostScreen = () => {
             );
     
             if (postResponse.data) {
-                Alert.alert("Thành công", "Đăng bài thành công");
-                navigation.navigate('Home', { refresh: true });
+                Alert.alert(
+                    "Đăng bài thành công", 
+                    "Bài viết của bạn đã được đăng thành công!",
+                    [{ text: "OK", onPress: () => navigation.navigate('Home', { refresh: true }) }]
+                );
             }
         } catch (error) {
             console.error("Lỗi khi đăng bài:", {
@@ -159,233 +189,395 @@ const PostScreen = () => {
                 || `Mã lỗi: ${error.response?.status || 'Không xác định'}`
                 || "Không thể đăng bài. Vui lòng thử lại sau.";
     
-            Alert.alert("Lỗi", errorMessage);
+            Alert.alert("Đăng bài thất bại", errorMessage, [{ text: "Đã hiểu" }]);
         } finally {
             setLoading(false);
+            setUploadProgress(0);
         }
     };
 
+    const renderImageItem = ({ item, index }) => (
+        <View style={styles.imageItem}>
+            <Image source={{ uri: item }} style={styles.selectedImage} />
+            <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={() => {
+                    setImages(prev => prev.filter((_, i) => i !== index));
+                    if (selectedThumbnailIndex === index) {
+                        setSelectedThumbnailIndex(0);
+                    } else if (selectedThumbnailIndex > index) {
+                        setSelectedThumbnailIndex(prev => prev - 1);
+                    }
+                }}>
+                <Ionicons name="close-circle" size={26} color="#FF3B30" />
+            </TouchableOpacity>
+            <TouchableOpacity
+                style={[
+                    styles.thumbnailSelector,
+                    selectedThumbnailIndex === index && styles.thumbnailSelectorActive
+                ]}
+                onPress={() => setSelectedThumbnailIndex(index)}>
+                {selectedThumbnailIndex === index ? (
+                    <MaterialIcons name="check-circle" size={26} color="#34C759" />
+                ) : (
+                    <MaterialIcons name="radio-button-unchecked" size={26} color="#8E8E93" />
+                )}
+            </TouchableOpacity>
+        </View>
+    );
+
     return (
-        <View style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()}>
-                    <FontAwesome name="arrow-left" size={24} color="black" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>Tạo bài viết mới</Text>
-                <TouchableOpacity
-                    style={[styles.postButton, (!title.trim() || images.length === 0) && styles.disabledButton]}
-                    onPress={handlePost}
-                    disabled={!title.trim() || images.length === 0 || loading}
-                >
-                    <Text style={styles.postButtonText}>Đăng</Text>
-                </TouchableOpacity>
-            </View>
-
-            <TextInput
-                style={styles.titleInput}
-                placeholder="Nhập tiêu đề bài viết..."
-                value={title}
-                onChangeText={setTitle}
-                multiline
-            />
-
-            <View style={styles.imagePickerContainer}>
-                <View style={styles.buttonRow}>
-                    <TouchableOpacity style={styles.pickerButton} onPress={pickImage}>
-                        <FontAwesome name="photo" size={20} color="white" />
-                        <Text style={styles.buttonText}>Thư viện</Text>
+        <SafeAreaView style={styles.safeArea}>
+            <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+            <View style={styles.container}>
+                <View style={styles.header}>
+                    <TouchableOpacity 
+                        style={styles.backButton}
+                        onPress={() => {
+                            if (images.length > 0 || title.trim()) {
+                                Alert.alert(
+                                    "Hủy bỏ bài viết?",
+                                    "Nếu bạn rời đi, bài viết sẽ không được lưu.",
+                                    [
+                                        { text: "Tiếp tục chỉnh sửa", style: "cancel" },
+                                        { text: "Hủy bỏ", style: "destructive", onPress: () => navigation.goBack() }
+                                    ]
+                                );
+                            } else {
+                                navigation.goBack();
+                            }
+                        }}>
+                        <Ionicons name="arrow-back" size={24} color="#007AFF" />
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.pickerButton} onPress={takePhoto}>
-                        <FontAwesome name="camera" size={20} color="white" />
-                        <Text style={styles.buttonText}>Chụp ảnh</Text>
+                    <Text style={styles.headerTitle}>Tạo bài viết mới</Text>
+                    <TouchableOpacity
+                        style={[
+                            styles.postButton, 
+                            (!title.trim() || images.length === 0) && styles.disabledButton
+                        ]}
+                        onPress={handlePost}
+                        disabled={!title.trim() || images.length === 0 || loading}
+                    >
+                        <Text style={styles.postButtonText}>Đăng</Text>
                     </TouchableOpacity>
                 </View>
-                {images.length > 0 ? (
-                    <View style={styles.imageListContainer}>
-                        <FlatList
-                            horizontal
-                            data={images}
-                            renderItem={({ item, index }) => (
-                                <View style={styles.imageItem}>
-                                    <Image source={{ uri: item }} style={styles.selectedImage} />
-                                    <TouchableOpacity
-                                        style={styles.deleteButton}
-                                        onPress={() => setImages(prev => prev.filter((_, i) => i !== index))}>
-                                        <FontAwesome name="times-circle" size={24} color="red" />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={styles.thumbnailSelector}
-                                        onPress={() => setSelectedThumbnailIndex(index)}>
-                                        <FontAwesome
-                                            name={selectedThumbnailIndex === index ? "check-circle" : "circle"}
-                                            size={24}
-                                            color="green"
-                                        />
-                                    </TouchableOpacity>
-                                </View>
-                            )}
-                            keyExtractor={(item, index) => index.toString()}
+
+                <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+                    <View style={styles.titleContainer}>
+                        <TextInput
+                            style={styles.titleInput}
+                            placeholder="Nhập tiêu đề bài viết..."
+                            placeholderTextColor="#8E8E93"
+                            value={title}
+                            onChangeText={setTitle}
+                            multiline
+                            maxLength={200}
                         />
+                        <Text style={styles.charCount}>{title.length}/200</Text>
                     </View>
-                ) : (
-                    <View style={styles.imagePlaceholder}>
-                        <View style={styles.imagePickerButtons}>
-                            <TouchableOpacity style={styles.pickButton} onPress={pickImage}>
-                                <FontAwesome name="image" size={30} color="#666" />
-                                <Text style={styles.buttonText}>Thư viện</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.pickButton} onPress={takePhoto}>
-                                <FontAwesome name="camera" size={30} color="#666" />
-                                <Text style={styles.buttonText}>Chụp ảnh</Text>
-                            </TouchableOpacity>
+
+                    <View style={styles.sectionTitle}>
+                        <MaterialIcons name="photo-library" size={22} color="#007AFF" />
+                        <Text style={styles.sectionTitleText}>Ảnh bài viết</Text>
+                        <Text style={styles.imageCount}>{images.length > 0 ? `${images.length} ảnh` : ""}</Text>
+                    </View>
+
+                    {images.length > 0 ? (
+                        <View style={styles.imageListContainer}>
+                            <FlatList
+                                horizontal
+                                data={images}
+                                renderItem={renderImageItem}
+                                keyExtractor={(item, index) => index.toString()}
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={styles.imageList}
+                            />
+                            <View style={styles.thumbnailHelp}>
+                                <MaterialIcons name="info-outline" size={16} color="#8E8E93" />
+                                <Text style={styles.thumbnailHelpText}>
+                                    Chọn ảnh đại diện cho bài viết bằng cách nhấn vào biểu tượng tròn
+                                </Text>
+                            </View>
+                        </View>
+                    ) : (
+                        <Animated.View 
+                            style={[
+                                styles.imagePlaceholder,
+                                { opacity: fadeAnim }
+                            ]}
+                        >
+                            <MaterialIcons name="add-photo-alternate" size={60} color="#C7C7CC" />
+                            <Text style={styles.imagePlaceholderText}>
+                                Thêm ảnh cho bài viết của bạn
+                            </Text>
+                        </Animated.View>
+                    )}
+
+                    <View style={styles.buttonContainer}>
+                        <TouchableOpacity 
+                            style={[styles.actionButton, styles.galleryButton]} 
+                            onPress={pickImage}
+                        >
+                            <Ionicons name="images-outline" size={22} color="#fff" />
+                            <Text style={styles.actionButtonText}>Thư viện</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                            style={[styles.actionButton, styles.cameraButton]} 
+                            onPress={takePhoto}
+                        >
+                            <Ionicons name="camera-outline" size={22} color="#fff" />
+                            <Text style={styles.actionButtonText}>Chụp ảnh</Text>
+                        </TouchableOpacity>
+                    </View>
+                </ScrollView>
+
+                {loading && (
+                    <View style={styles.loadingOverlay}>
+                        <View style={styles.loadingCard}>
+                            <ActivityIndicator size="large" color="#007AFF" />
+                            <Text style={styles.loadingText}>
+                                {uploadProgress < 100 
+                                    ? `Đang tải ảnh lên (${Math.round(uploadProgress)}%)` 
+                                    : "Đang đăng bài..."}
+                            </Text>
+                            <View style={styles.progressBarContainer}>
+                                <View 
+                                    style={[
+                                        styles.progressBar, 
+                                        { width: `${uploadProgress}%` }
+                                    ]} 
+                                />
+                            </View>
                         </View>
                     </View>
                 )}
             </View>
-
-            {loading && (
-                <View style={styles.loadingOverlay}>
-                    <ActivityIndicator size="large" color="#007bff" />
-                    <Text style={styles.loadingText}>Đang đăng bài...</Text>
-                </View>
-            )}
-        </View>
+        </SafeAreaView>
     );
 };
 
 const styles = StyleSheet.create({
-    imageListContainer: {
-        height: 120,
-        marginVertical: 10,
-    },
-    imageItem: {
-        position: 'relative',
-        marginRight: 10,
-    },
-    selectedImage: {
-        width: 100,
-        height: 100,
-        borderRadius: 8,
-    },
-    deleteButton: {
-        position: 'absolute',
-        top: 5,
-        right: 5,
-        backgroundColor: 'rgba(255,255,255,0.7)',
-        borderRadius: 12,
-        padding: 2,
-    },
-    thumbnailSelector: {
-        position: 'absolute',
-        bottom: 5,
-        left: 5,
-        backgroundColor: 'rgba(255,255,255,0.7)',
-        borderRadius: 12,
-        padding: 2,
+    safeArea: {
+        flex: 1,
+        backgroundColor: "#fff",
     },
     container: {
         flex: 1,
         backgroundColor: "#fff",
-        paddingTop: 50
     },
     header: {
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
-        paddingHorizontal: 15,
-        paddingVertical: 10,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
         borderBottomWidth: 1,
-        borderBottomColor: "#eee"
+        borderBottomColor: "#E5E5EA",
+        backgroundColor: "#fff",
+        elevation: 2,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 1,
+    },
+    backButton: {
+        padding: 8,
     },
     headerTitle: {
         fontSize: 18,
-        fontWeight: "bold"
+        fontWeight: "600",
+        color: "#000",
     },
     postButton: {
-        backgroundColor: "#007bff",
-        paddingHorizontal: 15,
+        backgroundColor: "#007AFF",
+        paddingHorizontal: 16,
         paddingVertical: 8,
-        borderRadius: 5
+        borderRadius: 20,
     },
     disabledButton: {
-        backgroundColor: "#ccc"
+        backgroundColor: "#C7C7CC",
     },
     postButtonText: {
         color: "#fff",
-        fontWeight: "bold"
+        fontWeight: "600",
+        fontSize: 15,
+    },
+    scrollView: {
+        flex: 1,
+    },
+    scrollContent: {
+        paddingBottom: 30,
+    },
+    titleContainer: {
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: "#E5E5EA",
     },
     titleInput: {
-        padding: 15,
-        fontSize: 16,
+        fontSize: 18,
+        color: "#000",
         minHeight: 100,
-        textAlignVertical: "top"
+        textAlignVertical: "top",
+        padding: 0,
     },
-    buttonRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        marginBottom: 15,
+    charCount: {
+        fontSize: 12,
+        color: "#8E8E93",
+        textAlign: "right",
+        marginTop: 8,
     },
-    pickerButton: {
-        backgroundColor: '#007bff',
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-        borderRadius: 25,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
+    sectionTitle: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 16,
+        paddingVertical: 12,
     },
-    buttonText: {
-        color: 'white',
+    sectionTitleText: {
         fontSize: 16,
+        fontWeight: "600",
+        marginLeft: 8,
+        color: "#000",
     },
-    imagePickerContainer: {
-        flex: 1,
-        margin: 15,
-        borderRadius: 10,
+    imageCount: {
+        fontSize: 14,
+        color: "#8E8E93",
+        marginLeft: "auto",
+    },
+    imageListContainer: {
+        marginBottom: 16,
+    },
+    imageList: {
+        paddingHorizontal: 16,
+    },
+    imageItem: {
+        position: 'relative',
+        marginRight: 12,
+        borderRadius: 12,
         overflow: "hidden",
-        backgroundColor: "#f8f8f8"
+        borderWidth: 1,
+        borderColor: "#E5E5EA",
     },
     selectedImage: {
-        width: "100%",
-        height: "100%",
-        resizeMode: "cover"
+        width: width * 0.4,
+        height: width * 0.4,
+        borderRadius: 12,
+    },
+    deleteButton: {
+        position: 'absolute',
+        top: 8,
+        right: 8,
+        backgroundColor: 'rgba(255,255,255,0.9)',
+        borderRadius: 15,
+        padding: 2,
+        elevation: 3,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.2,
+        shadowRadius: 2,
+    },
+    thumbnailSelector: {
+        position: 'absolute',
+        bottom: 8,
+        left: 8,
+        backgroundColor: 'rgba(255,255,255,0.9)',
+        borderRadius: 15,
+        padding: 2,
+        elevation: 3,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.2,
+        shadowRadius: 2,
+    },
+    thumbnailSelectorActive: {
+        backgroundColor: 'rgba(255,255,255,1)',
+    },
+    thumbnailHelp: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 16,
+        marginTop: 8,
+    },
+    thumbnailHelpText: {
+        fontSize: 12,
+        color: "#8E8E93",
+        marginLeft: 4,
     },
     imagePlaceholder: {
-        flex: 1,
+        alignItems: "center",
         justifyContent: "center",
-        alignItems: "center"
+        backgroundColor: "#F2F2F7",
+        borderRadius: 12,
+        marginHorizontal: 16,
+        height: width * 0.5,
+        borderWidth: 1,
+        borderColor: "#E5E5EA",
+        borderStyle: "dashed",
     },
     imagePlaceholderText: {
-        marginTop: 10,
+        marginTop: 12,
         fontSize: 16,
-        color: "#666"
+        color: "#8E8E93",
+    },
+    buttonContainer: {
+        flexDirection: "row",
+        justifyContent: "center",
+        marginTop: 20,
+        paddingHorizontal: 16,
+        gap: 16,
+    },
+    actionButton: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        borderRadius: 25,
+        flex: 1,
+    },
+    galleryButton: {
+        backgroundColor: "#5856D6",
+    },
+    cameraButton: {
+        backgroundColor: "#FF9500",
+    },
+    actionButtonText: {
+        color: "#fff",
+        fontWeight: "600",
+        fontSize: 16,
+        marginLeft: 8,
     },
     loadingOverlay: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: "rgba(255, 255, 255, 0.8)",
+        backgroundColor: "rgba(0, 0, 0, 0.7)",
         justifyContent: "center",
-        alignItems: "center"
+        alignItems: "center",
+        zIndex: 1000,
+    },
+    loadingCard: {
+        backgroundColor: "#fff",
+        borderRadius: 16,
+        padding: 24,
+        width: "80%",
+        alignItems: "center",
     },
     loadingText: {
-        marginTop: 10,
+        marginTop: 16,
         fontSize: 16,
-        color: "#007bff"
+        color: "#000",
+        textAlign: "center",
     },
-    imagePickerButtons: {
-        flexDirection: "row",
-        justifyContent: "center",
-        alignItems: "center",
-        gap: 30
+    progressBarContainer: {
+        width: "100%",
+        height: 6,
+        backgroundColor: "#E5E5EA",
+        borderRadius: 3,
+        marginTop: 16,
+        overflow: "hidden",
     },
-    pickButton: {
-        alignItems: "center",
-        justifyContent: "center"
+    progressBar: {
+        height: "100%",
+        backgroundColor: "#34C759",
     },
-    buttonText: {
-        marginTop: 8,
-        fontSize: 14,
-        color: "#666"
-    }
 });
 
 export default PostScreen;
