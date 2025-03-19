@@ -5,11 +5,10 @@ import {
 import axios from "axios";
 import { FontAwesome } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useNavigation, useFocusEffect, useRoute } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { toggleFavorite, checkIsFavorite } from "../services/FavoriteService";
 
 const HomeScreen = () => {
-    const route = useRoute();
     const [photos, setPhotos] = useState([]);
     const [search, setSearch] = useState("");
     const [favoritePhotos, setFavoritePhotos] = useState([]);
@@ -18,7 +17,7 @@ const HomeScreen = () => {
     const [error, setError] = useState(null);
     const navigation = useNavigation();
 
-    const fetchPhotos = () => {
+    useEffect(() => {
         setLoading(true);
         axios.get("https://mma301-project-be-9e9f.onrender.com/photos")
             .then(response => {
@@ -37,17 +36,6 @@ const HomeScreen = () => {
             .finally(() => {
                 setLoading(false);
             });
-    };
-
-    useEffect(() => {
-        if (route.params?.refresh) {
-            fetchPhotos();
-            navigation.setParams({ refresh: false });
-        }
-    }, [route.params]);
-
-    useEffect(() => {
-        fetchPhotos();
     }, []);
 
     const loadFavorites = async () => {
@@ -176,7 +164,7 @@ const HomeScreen = () => {
         return (
             <FlatList
                 data={filteredPhotos}
-                keyExtractor={item => item._id.toString()}
+                keyExtractor={item => item.id.toString()}
                 renderItem={({ item }) => (
                     <View style={styles.photoContainer}>
                         <TouchableOpacity 
@@ -213,10 +201,13 @@ const HomeScreen = () => {
                     onChangeText={text => setSearch(text)}
                 />
                 <TouchableOpacity 
-                    style={styles.postButton} 
-                    onPress={() => navigation.navigate("PostScreen")}
+                    style={styles.favoriteListButton} 
+                    onPress={() => navigation.navigate("FavouritePhotos", { 
+                        updateFavorites: setFavoritePhotos, 
+                        updateLikes: setLikes 
+                    })}
                 >
-                    <FontAwesome name="plus" size={24} color="white" />
+                    <FontAwesome name="heart" size={24} color="white" />
                 </TouchableOpacity>
             </View>
 
@@ -232,7 +223,7 @@ const styles = StyleSheet.create({
     container: { flex: 1, padding: 10, backgroundColor: "#45f7f4", paddingVertical: 50 },
     header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
     searchBox: { flex: 1, borderWidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 10, fontSize: 16, backgroundColor: "#fff" },
-    postButton: { marginLeft: 10, backgroundColor: "#007bff", padding: 10, borderRadius: 8 },
+    favoriteListButton: { marginLeft: 10, backgroundColor: "#007bff", padding: 10, borderRadius: 8 },
     photoContainer: { alignItems: "center", marginBottom: 20, backgroundColor: "#fff", borderRadius: 10, overflow: "hidden" },
     image: { width: "100%", height: 400, resizeMode: "cover" },
     infoContainer: { flexDirection: "column", alignItems: "flex-start", width: "100%", padding: 10 },
