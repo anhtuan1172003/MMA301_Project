@@ -184,15 +184,14 @@ function ProfileScreen({ navigation }) {
         />
       </View>
       <View style={styles.bottomNav}>
-                <TouchableOpacity style={styles.navButton}
-                onPress={() => navigation.navigate("Home")}>
+                <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate("Home")}>
                     <FontAwesome name="home" size={24} color="#8e8e8e" />
                 </TouchableOpacity>
-                <TouchableOpacity 
-                    style={styles.navButton}
-                    onPress={() => navigation.navigate("PostScreen")}
-                >
+                <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate("PostScreen")}>
                     <FontAwesome name="plus-square-o" size={24} color="#8e8e8e" />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate("MapScreen")}>
+                    <FontAwesome name="map-o" size={24} color="#8e8e8e" />
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.navButton}
                     onPress={() => navigation.navigate("ProfileStack")}>
