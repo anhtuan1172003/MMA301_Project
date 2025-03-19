@@ -276,9 +276,7 @@ const HomeScreen = () => {
                 >
                     <FontAwesome name="plus-square-o" size={24} color="#8e8e8e" />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.navButton}>
-                    <FontAwesome name="heart-o" size={24} color="#8e8e8e" />
-                </TouchableOpacity>
+
                 <TouchableOpacity style={styles.navButton}
                     onPress={() => navigation.navigate("ProfileStack")}>
                     <FontAwesome name="user-o" size={24} color="#8e8e8e" />
