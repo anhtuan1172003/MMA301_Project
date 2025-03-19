@@ -8,27 +8,33 @@ import {
   ActivityIndicator,
   Alert,
   Text,
-  TouchableOpacity
+  TouchableOpacity,
+  RefreshControl
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useNavigation, useFocusEffect, useRoute } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import axios from "axios";
 
 const { width } = Dimensions.get("window");
-const imageSize = (width - 47) / 3; // 3 images per row with padding
+const imageSize = (width - 8) / 3; // 3 images per row with minimal padding
 
 const PostTab = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const navigation = useNavigation();
 
-  useEffect(() => {
-    fetchUserPhotos();
-  }, []);
+  // Use useFocusEffect to refresh data when the screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchUserPhotos();
+    }, [])
+  );
 
   const fetchUserPhotos = async () => {
     try {
+      setError(null);
       const storedUser = await AsyncStorage.getItem("user");
       if (!storedUser) {
         throw new Error("No user logged in");
@@ -40,11 +46,22 @@ const PostTab = () => {
         `https://mma301-project-be-9e9f.onrender.com/photos?userId=${userId}`
       );
       const photos = response.data.data;
-      const formattedData = photos.map((photo) => ({
-        id: photo._id || photo.id,
-        title: photo.title,
-        uri: photo.image.thumbnail || photo.image.url[0],
-      }));
+      
+      const formattedData = photos.map((photo) => {
+        // Handle the case where image.url might be a string or an array
+        let urls = photo.image.url;
+        if (typeof urls === 'string') {
+          // If it's a comma-separated string, split it into an array
+          urls = urls.split(',');
+        }
+        
+        return {
+          id: photo._id || photo.id,
+          title: photo.title,
+          uri: photo.image.thumbnail || (urls && urls.length > 0 ? urls[0] : null),
+          allImages: urls || [],
+        };
+      });
 
       setData(formattedData);
     } catch (error) {
@@ -53,7 +70,13 @@ const PostTab = () => {
       Alert.alert("Lỗi", "Không thể tải ảnh. Vui lòng thử lại sau.");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchUserPhotos();
   };
 
   const renderItem = ({ item }) => (
@@ -65,7 +88,7 @@ const PostTab = () => {
           title: item.title, 
           image: { 
             thumbnail: item.uri, 
-            url: [item.uri] 
+            url: item.allImages 
           } 
         }
       })}
@@ -75,21 +98,41 @@ const PostTab = () => {
         style={styles.image}
         onError={(e) => console.log("Image failed to load:", item.uri)}
       />
+      {item.allImages && item.allImages.length > 1 && (
+        <View style={styles.multipleIndicator}>
+          <Text style={styles.multipleIndicatorText}>{item.allImages.length}</Text>
+        </View>
+      )}
     </TouchableOpacity>
   );
 
-  if (loading) {
+  const renderEmptyComponent = () => (
+    <View style={styles.emptyContainer}>
+      <Text style={styles.emptyText}>Bạn chưa có bài viết nào</Text>
+      <TouchableOpacity 
+        style={styles.createButton}
+        onPress={() => navigation.navigate('PostScreen')}
+      >
+        <Text style={styles.createButtonText}>Tạo bài viết mới</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  if (loading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#0000ff" />
+        <ActivityIndicator size="large" color="#007AFF" />
       </View>
     );
   }
 
-  if (error) {
+  if (error && !refreshing) {
     return (
       <View style={styles.errorContainer}>
         <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchUserPhotos}>
+          <Text style={styles.retryButtonText}>Thử lại</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -102,6 +145,15 @@ const PostTab = () => {
         keyExtractor={(item) => item.id}
         numColumns={3}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.listContent}
+        ListEmptyComponent={renderEmptyComponent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#007AFF"]}
+          />
+        }
       />
     </View>
   );
@@ -110,16 +162,36 @@ const PostTab = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#ffffff",
+  },
+  listContent: {
+    padding: 2,
+    flexGrow: 1,
   },
   imageContainer: {
     margin: 1,
+    position: 'relative',
   },
   image: {
     width: imageSize,
     height: imageSize,
-    borderRadius: 5,
-    borderColor: 2,
+    borderRadius: 2,
+  },
+  multipleIndicator: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  multipleIndicatorText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: 'bold',
   },
   loadingContainer: {
     flex: 1,
@@ -130,10 +202,45 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    padding: 20,
   },
   errorText: {
     fontSize: 16,
-    color: "red",
+    color: "#FF3B30",
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: "#007AFF",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  retryButtonText: {
+    color: "white",
+    fontWeight: "600",
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    minHeight: 300,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: "#8E8E93",
+    marginBottom: 16,
+  },
+  createButton: {
+    backgroundColor: "#007AFF",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  createButtonText: {
+    color: "white",
+    fontWeight: "600",
   },
 });
 

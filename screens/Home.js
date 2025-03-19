@@ -181,7 +181,7 @@ const HomeScreen = () => {
                     <View style={styles.photoContainer}>
                         <TouchableOpacity 
                             style={styles.imageWrapper}
-                            onPress={() => navigation.navigate('PhotoDetails', { photo: { _id: item._id, title: item.title, image: { thumbnail: item.image?.thumbnail, url: [item.image?.thumbnail] } } })}>
+                            onPress={() => navigation.navigate('PhotoDetails', { photo: { _id: item._id, title: item.title, image: item.image } })}>
                             <Image source={{ uri: item.image?.thumbnail }} style={styles.image} />
                         </TouchableOpacity>
                         <View style={styles.infoContainer}>

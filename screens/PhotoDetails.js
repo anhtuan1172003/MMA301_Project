@@ -144,7 +144,7 @@ const PhotoDetails = ({ route }) => {
             style={styles.avatar}
           />
           <View style={styles.userTitle}>
-            <Text style={styles.username}>{photo?.userId?.name || "Người dùng"}</Text>
+            <Text style={styles.username}>{photo?.user?.name || photo?.userId?.name || "Người dùng"}</Text>
             <Text style={styles.time}>{photo?.createdAt ? new Date(photo.createdAt).toLocaleString() : ""}</Text>
           </View>
           <Ionicons

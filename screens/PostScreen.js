@@ -146,38 +146,37 @@ const PostScreen = () => {
             });
     
             const cloudinaryResults = await Promise.all(uploadPromises);
-            
-            // Extract URLs correctly
-            const imageUrls = cloudinaryResults.map(result => result.secure_url);
-            const thumbnailUrl = imageUrls[selectedThumbnailIndex];
-            
-            const postData = {
-                title: title,
-                userId: parsedUser._id,
-                image: {
-                    url: imageUrls.join(','), // Send as comma-separated string
-                    thumbnail: thumbnailUrl
-                }
-            };
-    
-            const postResponse = await axios.post(
-                "https://mma301-project-be-9e9f.onrender.com/photos",
-                postData,
-                {
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${parsedUser.token}`
-                    }
-                }
-            );
-    
-            if (postResponse.data) {
-                Alert.alert(
-                    "Đăng bài thành công", 
-                    "Bài viết của bạn đã được đăng thành công!",
-                    [{ text: "OK", onPress: () => navigation.navigate('Home', { refresh: true }) }]
-                );
+        
+        // Extract URLs correctly
+        const imageUrls = cloudinaryResults.map(result => result.secure_url);
+        const thumbnailUrl = imageUrls[selectedThumbnailIndex];
+        
+        // Send all images in a single request
+        const postData = {
+            title: title,
+            userId: parsedUser._id,
+            image: {
+                url: imageUrls, // Send the array of URLs
+                thumbnail: thumbnailUrl
             }
+        };
+        
+        const response = await axios.post(
+            "https://mma301-project-be-9e9f.onrender.com/photos",
+            postData,
+            {
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${parsedUser.token}`
+                }
+            }
+        );
+        
+        Alert.alert(
+            "Đăng bài thành công", 
+            "Bài viết của bạn đã được đăng thành công!",
+            [{ text: "OK", onPress: () => navigation.navigate('Home', { refresh: true }) }]
+        );
         } catch (error) {
             console.error("Lỗi khi đăng bài:", {
                 message: error.message,
