@@ -7,7 +7,8 @@ import {
     StyleSheet,
     Image,
     Alert,
-    ActivityIndicator
+    ActivityIndicator,
+    FlatList
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { FontAwesome } from "@expo/vector-icons";
@@ -17,13 +18,14 @@ import { useNavigation } from "@react-navigation/native";
 
 const PostScreen = () => {
     const [title, setTitle] = useState("");
-    const [image, setImage] = useState(null);
+    const [images, setImages] = useState([]);
+    const [selectedThumbnailIndex, setSelectedThumbnailIndex] = useState(0);
     const [loading, setLoading] = useState(false);
     const navigation = useNavigation();
 
     const pickImage = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        
+
         if (status !== "granted") {
             Alert.alert("Thông báo", "Cần cấp quyền truy cập thư viện ảnh để tiếp tục");
             return;
@@ -36,13 +38,14 @@ const PostScreen = () => {
         });
 
         if (!result.canceled) {
-            setImage(result.assets[0].uri);
+            setImages(prev => [...prev, ...result.assets.map(asset => asset.uri)]);
+            if (images.length === 0) setSelectedThumbnailIndex(0);
         }
     };
 
     const takePhoto = async () => {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
-        
+
         if (status !== "granted") {
             Alert.alert("Thông báo", "Cần cấp quyền truy cập camera để tiếp tục");
             return;
@@ -54,71 +57,82 @@ const PostScreen = () => {
         });
 
         if (!result.canceled) {
-            setImage(result.assets[0].uri);
+            setImages(prev => [...prev, ...result.assets.map(asset => asset.uri)]);
+            if (images.length === 0) setSelectedThumbnailIndex(0);
         }
     };
 
+    
     const handlePost = async () => {
         if (!title.trim()) {
             Alert.alert("Thông báo", "Vui lòng nhập tiêu đề cho bài viết");
             return;
         }
-
-        if (!image) {
+    
+        if (images.length === 0) {
             Alert.alert("Thông báo", "Vui lòng chọn ảnh cho bài viết");
             return;
         }
-
+    
         try {
             setLoading(true);
             const storedUser = await AsyncStorage.getItem("user");
-            
+    
             if (!storedUser) {
                 Alert.alert("Thông báo", "Vui lòng đăng nhập để đăng bài");
                 return;
             }
-
+    
             const parsedUser = JSON.parse(storedUser);
-            
+    
             // Prepare Cloudinary upload data
-            const cloudinaryData = new FormData();
-            cloudinaryData.append("file", {
-                uri: `file://${image}`,
-                name: 'upload.jpg',
-                type: 'image/jpeg'
-            });
-            cloudinaryData.append("upload_preset", "MMA_Upload");
-            cloudinaryData.append("cloud_name", "dvdnw79tk");
-
-            const cloudinaryResponse = await fetch(
-                "https://api.cloudinary.com/v1_1/dvdnw79tk/image/upload",
-                {
-                    method: "POST",
-                    body: cloudinaryData,
-                    headers: {
-                        'Accept': 'application/json'
+            const uploadPromises = images.map(async (uri) => {
+                const cloudinaryData = new FormData();
+                cloudinaryData.append("file", {
+                    uri: uri,
+                    name: 'upload.jpg',
+                    type: 'image/jpeg'
+                });
+                cloudinaryData.append("upload_preset", "MMA_Upload");
+                cloudinaryData.append("cloud_name", "dvdnw79tk");
+    
+                const response = await fetch(
+                    "https://api.cloudinary.com/v1_1/dvdnw79tk/image/upload",
+                    {
+                        method: "POST",
+                        body: cloudinaryData,
+                        headers: {
+                            'Accept': 'application/json'
+                        }
                     }
+                );
+    
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`Cloudinary upload failed: ${errorData.error.message}`);
                 }
-            );
-
-            if (!cloudinaryResponse.ok) {
-                const errorData = await cloudinaryResponse.json();
-                throw new Error(`Cloudinary upload failed: ${errorData.error.message}`);
-            }
-
-            const cloudinaryResult = await cloudinaryResponse.json();
-            const imageUrl = cloudinaryResult.secure_url;
-
-            // Send post data to backend
+                return response.json();
+            });
+    
+            const cloudinaryResults = await Promise.all(uploadPromises);
+            
+            // Extract URLs correctly
+            const imageUrls = cloudinaryResults.map(result => result.secure_url);
+            const thumbnailUrl = imageUrls[selectedThumbnailIndex];
+            
+            // IMPORTANT: Send the first URL as a string, not as an array
+            // This is because the backend wraps it in an array again
             const postData = {
                 title: title,
                 userId: parsedUser._id,
                 image: {
-                    url: imageUrl,
-                    thumbnail: imageUrl
+                    url: imageUrls.join(','), // Send as comma-separated string
+                    thumbnail: thumbnailUrl
                 }
             };
-
+            
+            console.log("Sending data:", JSON.stringify(postData, null, 2));
+    
             const postResponse = await axios.post(
                 "https://mma301-project-be-9e9f.onrender.com/photos",
                 postData,
@@ -129,7 +143,7 @@ const PostScreen = () => {
                     }
                 }
             );
-
+    
             if (postResponse.data) {
                 Alert.alert("Thành công", "Đăng bài thành công");
                 navigation.navigate('Home', { refresh: true });
@@ -140,11 +154,11 @@ const PostScreen = () => {
                 response: error.response?.data,
                 status: error.response?.status
             });
-            
-            const errorMessage = error.response?.data?.message 
-                || `Mã lỗi: ${error.response?.status || 'Không xác định'}` 
+    
+            const errorMessage = error.response?.data?.error || error.response?.data?.message
+                || `Mã lỗi: ${error.response?.status || 'Không xác định'}`
                 || "Không thể đăng bài. Vui lòng thử lại sau.";
-            
+    
             Alert.alert("Lỗi", errorMessage);
         } finally {
             setLoading(false);
@@ -158,10 +172,10 @@ const PostScreen = () => {
                     <FontAwesome name="arrow-left" size={24} color="black" />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Tạo bài viết mới</Text>
-                <TouchableOpacity 
-                    style={[styles.postButton, (!title.trim() || !image) && styles.disabledButton]}
+                <TouchableOpacity
+                    style={[styles.postButton, (!title.trim() || images.length === 0) && styles.disabledButton]}
                     onPress={handlePost}
-                    disabled={!title.trim() || !image || loading}
+                    disabled={!title.trim() || images.length === 0 || loading}
                 >
                     <Text style={styles.postButtonText}>Đăng</Text>
                 </TouchableOpacity>
@@ -176,8 +190,43 @@ const PostScreen = () => {
             />
 
             <View style={styles.imagePickerContainer}>
-                {image ? (
-                    <Image source={{ uri: image }} style={styles.selectedImage} />
+                <View style={styles.buttonRow}>
+                    <TouchableOpacity style={styles.pickerButton} onPress={pickImage}>
+                        <FontAwesome name="photo" size={20} color="white" />
+                        <Text style={styles.buttonText}>Thư viện</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.pickerButton} onPress={takePhoto}>
+                        <FontAwesome name="camera" size={20} color="white" />
+                        <Text style={styles.buttonText}>Chụp ảnh</Text>
+                    </TouchableOpacity>
+                </View>
+                {images.length > 0 ? (
+                    <View style={styles.imageListContainer}>
+                        <FlatList
+                            horizontal
+                            data={images}
+                            renderItem={({ item, index }) => (
+                                <View style={styles.imageItem}>
+                                    <Image source={{ uri: item }} style={styles.selectedImage} />
+                                    <TouchableOpacity
+                                        style={styles.deleteButton}
+                                        onPress={() => setImages(prev => prev.filter((_, i) => i !== index))}>
+                                        <FontAwesome name="times-circle" size={24} color="red" />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={styles.thumbnailSelector}
+                                        onPress={() => setSelectedThumbnailIndex(index)}>
+                                        <FontAwesome
+                                            name={selectedThumbnailIndex === index ? "check-circle" : "circle"}
+                                            size={24}
+                                            color="green"
+                                        />
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+                            keyExtractor={(item, index) => index.toString()}
+                        />
+                    </View>
                 ) : (
                     <View style={styles.imagePlaceholder}>
                         <View style={styles.imagePickerButtons}>
@@ -205,6 +254,35 @@ const PostScreen = () => {
 };
 
 const styles = StyleSheet.create({
+    imageListContainer: {
+        height: 120,
+        marginVertical: 10,
+    },
+    imageItem: {
+        position: 'relative',
+        marginRight: 10,
+    },
+    selectedImage: {
+        width: 100,
+        height: 100,
+        borderRadius: 8,
+    },
+    deleteButton: {
+        position: 'absolute',
+        top: 5,
+        right: 5,
+        backgroundColor: 'rgba(255,255,255,0.7)',
+        borderRadius: 12,
+        padding: 2,
+    },
+    thumbnailSelector: {
+        position: 'absolute',
+        bottom: 5,
+        left: 5,
+        backgroundColor: 'rgba(255,255,255,0.7)',
+        borderRadius: 12,
+        padding: 2,
+    },
     container: {
         flex: 1,
         backgroundColor: "#fff",
@@ -241,6 +319,24 @@ const styles = StyleSheet.create({
         fontSize: 16,
         minHeight: 100,
         textAlignVertical: "top"
+    },
+    buttonRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        marginBottom: 15,
+    },
+    pickerButton: {
+        backgroundColor: '#007bff',
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+        borderRadius: 25,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    buttonText: {
+        color: 'white',
+        fontSize: 16,
     },
     imagePickerContainer: {
         flex: 1,
