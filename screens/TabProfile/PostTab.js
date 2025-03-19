@@ -34,7 +34,7 @@ const PostTab = () => {
       const parsedUser = JSON.parse(storedUser);
       const userId = parsedUser._id;
       const response = await axios.get(
-        `https://mma301-project-be-9e9f.onrender.com/photos`
+        `https://mma301-project-be-9e9f.onrender.com/photos?userId=${userId}`
       );
       const photos = response.data.data;
       const formattedData = photos.map((photo) => ({

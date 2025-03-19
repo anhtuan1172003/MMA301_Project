@@ -112,7 +112,7 @@ const PostScreen = () => {
             // Send post data to backend
             const postData = {
                 title: title,
-                user: parsedUser._id,
+                userId: parsedUser._id,
                 image: {
                     url: imageUrl,
                     thumbnail: imageUrl
