@@ -10,7 +10,9 @@ import {
   SafeAreaView,
   ActivityIndicator,
   Alert,
+  Dimensions,
 } from "react-native";
+import MapView, { Marker } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -192,6 +194,29 @@ const PhotoDetails = ({ route }) => {
           <Ionicons name="repeat-outline" size={24} />
           <Ionicons name="paper-plane-outline" size={24} />
         </View>
+        
+        {photo?.location && photo.location.latitude && photo.location.longitude && (
+          <View style={styles.mapContainer}>
+            <Text style={styles.mapTitle}>Vị trí</Text>
+            <MapView
+              style={styles.map}
+              initialRegion={{
+                latitude: parseFloat(photo.location.latitude),
+                longitude: parseFloat(photo.location.longitude),
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
+              }}
+            >
+              <Marker
+                coordinate={{
+                  latitude: parseFloat(photo.location.latitude),
+                  longitude: parseFloat(photo.location.longitude),
+                }}
+              />
+            </MapView>
+          </View>
+        )}
+        
         <View style={styles.commentsContainer}>
           {loading ? (
             <ActivityIndicator size="large" color="#0000ff" />
@@ -248,6 +273,23 @@ const PhotoDetails = ({ route }) => {
 };
 
 const styles = StyleSheet.create({
+  mapContainer: {
+    marginVertical: 10,
+    borderRadius: 15,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+  },
+  mapTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    padding: 10,
+    backgroundColor: "#f8f8f8",
+  },
+  map: {
+    width: "100%",
+    height: 200,
+  },
   noComments: {
     textAlign: "center",
     fontSize: 16,

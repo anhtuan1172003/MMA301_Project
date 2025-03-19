@@ -10,6 +10,7 @@ import FavouritePhotos from "./screens/FavouritePhotos";
 import PhotoDetails from "./screens/PhotoDetails";
 import PostScreen from "./screens/PostScreen";
 import ProfileStack from "./screens/ProfileStack";
+import MapScreen from "./screens/MapScreen";
 
 const Stack = createNativeStackNavigator()
 
@@ -37,6 +38,7 @@ function Navigation() {
           <Stack.Screen name="PostScreen" component={PostScreen} />
           <Stack.Screen name="Home" component={Home} />
           <Stack.Screen name="ProfileStack" component={ProfileStack} />
+          <Stack.Screen name="MapScreen" component={MapScreen} />
           </>
         )}
       </Stack.Navigator>

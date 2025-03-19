@@ -8,6 +8,7 @@ import { FontAwesome } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation, useFocusEffect, useRoute } from "@react-navigation/native";
 import { toggleFavorite, checkIsFavorite } from "../services/FavoriteService";
+import { Ionicons } from "@expo/vector-icons";
 
 const HomeScreen = () => {
     const route = useRoute();
@@ -246,18 +247,20 @@ const HomeScreen = () => {
             
             {/* Header */}
             <View style={styles.header}>
-                <Text style={styles.appTitle}>Picly</Text>
-                <TextInput
-                    style={styles.searchBox}
-                    placeholder="Nhập tiêu đề..."
-                    onChangeText={text => setSearch(text)}
-                    value={search}
-                />
+            <Text style={styles.appTitle}>Picly</Text>
+                <View style={styles.searchContainer}>
+                    <TextInput
+                        style={styles.searchInput}
+                        placeholder="Tìm kiếm..."
+                        value={search}
+                        onChangeText={setSearch}
+                    />
+                </View>
                 <TouchableOpacity 
-                    style={styles.postButton} 
-                    onPress={() => navigation.navigate("PostScreen")}
+                    style={styles.mapButton}
+                    onPress={() => navigation.navigate("MapScreen")}
                 >
-                    <FontAwesome name="plus" size={24} color="white" />
+                    <Ionicons name="map-outline" size={24} color="#007260" />
                 </TouchableOpacity>
             </View>
             
@@ -438,5 +441,16 @@ const styles = StyleSheet.create({
                 marginBottom: 40,
             },
           }),
-    }
+    },
+    header: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingHorizontal: 10,
+    },
+    mapButton: {
+        padding: 8,
+        borderRadius: 20,
+        backgroundColor: "#f0f0f0",
+    },
 });
