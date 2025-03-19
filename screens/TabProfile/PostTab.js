@@ -57,6 +57,7 @@ const PostTab = () => {
         
         return {
           id: photo._id || photo.id,
+          userId: photo.userId,
           title: photo.title,
           uri: photo.image.thumbnail || (urls && urls.length > 0 ? urls[0] : null),
           allImages: urls || [],
@@ -85,6 +86,7 @@ const PostTab = () => {
       onPress={() => navigation.navigate('PhotoDetails', { 
         photo: { 
           _id: item.id, 
+          userId: item.userId,
           title: item.title, 
           image: { 
             thumbnail: item.uri, 
