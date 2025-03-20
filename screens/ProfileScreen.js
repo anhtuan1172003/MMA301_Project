@@ -23,6 +23,7 @@ import TaggedTab from "./TabProfile/TaggedTab";
 import { FontAwesome } from "@expo/vector-icons";
 import { useAuth } from "../AuthContext";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect, useRoute } from "@react-navigation/native";
 
 const API_URL = "https://mma301-project-be-9e9f.onrender.com/users";
 const Tab = createMaterialTopTabNavigator();
@@ -31,10 +32,18 @@ function ProfileScreen({ navigation }) {
   const { logout } = useAuth();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const route = useRoute();
 
   useEffect(() => {
     getUserId();
   }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+        if (route.params?.refresh) {
+            fetchUserData();  // Tải lại dữ liệu khi có refresh
+        }
+    }, [route.params])
+);
 
   const getUserId = async () => {
     try {

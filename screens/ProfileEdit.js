@@ -119,7 +119,9 @@ function ProfileEdit({ route, navigation }) {
     try {
       await axios.put(`${API_URL}/${user._id}`, user);
       Alert.alert('Thành công', 'Đã cập nhật thông tin cá nhân.');
-      navigation.goBack(); // Quay lại ProfileScreen
+      // navigation.navigate('ProfileScreen', { refresh: true });
+      navigation.goBack();
+
     } catch (error) {
       console.error('Update error:', error);
       Alert.alert('Lỗi', 'Không thể cập nhật thông tin.');
