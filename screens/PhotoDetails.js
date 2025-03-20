@@ -19,6 +19,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getCommentsByPhotoId, createComment } from "../services/CommentService";
 import { toggleFavorite, checkIsFavorite } from "../services/FavoriteService";
 import { FontAwesome } from "@expo/vector-icons";
+import { deletePhoto } from "../services/PhotoService";
 
 const PhotoDetails = ({ route }) => {
   const navigation = useNavigation();
@@ -29,6 +30,7 @@ const PhotoDetails = ({ route }) => {
   const [user, setUser] = useState(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteId, setFavoriteId] = useState(null);
+  const [isOwner, setIsOwner] = useState(false);
 
   useEffect(() => {
     loadUser();
@@ -91,7 +93,11 @@ const PhotoDetails = ({ route }) => {
     try {
       const storedUser = await AsyncStorage.getItem("user");
       if (storedUser) {
-        setUser(JSON.parse(storedUser));
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+        if (photo?.userId?._id === parsedUser._id) {
+          setIsOwner(true);
+        }
       }
     } catch (error) {
       console.error("Error loading user:", error);
@@ -138,7 +144,42 @@ const PhotoDetails = ({ route }) => {
             <Ionicons name="chevron-back" size={24} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>PhotoFORUM</Text>
-          <Ionicons name="reorder-two-outline" size={24} />
+          {isOwner && (
+            <View style={{ flexDirection: 'row' }}>
+              <TouchableOpacity 
+                onPress={() => navigation.navigate('PostScreen', { photo: photo })}
+                style={{ marginRight: 10 }}
+              >
+                <Ionicons name="create-outline" size={24} />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={() => {
+                  Alert.alert(
+                    'Xác nhận',
+                    'Bạn có chắc chắn muốn xóa bài đăng này?',
+                    [
+                      { text: 'Hủy', style: 'cancel' },
+                      { 
+                        text: 'Xóa', 
+                        style: 'destructive',
+                        onPress: async () => {
+                          try {
+                            await deletePhoto(photo._id);
+                            navigation.navigate('Home', { refresh: true });
+                          } catch (error) {
+                            console.error('Error deleting photo:', error);
+                            Alert.alert('Lỗi', 'Không thể xóa bài đăng. Vui lòng thử lại sau.');
+                          }
+                        }
+                      }
+                    ]
+                  );
+                }}
+              >
+                <Ionicons name="trash-outline" size={24} color="red" />
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
         <View style={styles.header}>
           <Image
