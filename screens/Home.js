@@ -177,6 +177,11 @@ const HomeScreen = () => {
                         style={styles.image} 
                         resizeMode="cover"
                     />
+                    {item.image.url && item.image.url.length > 1 && (
+                            <View style={styles.multipleIndicator}>
+                              <Text style={styles.multipleIndicatorText}>{item.image.url.length}</Text>
+                            </View>
+                          )}
                 </TouchableOpacity>
                 
                 {/* Action bar */}
@@ -454,4 +459,20 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         backgroundColor: "#f0f0f0",
     },
+    multipleIndicator: {
+        position: 'absolute',
+        top: 5,
+        right: 5,
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        borderRadius: 10,
+        width: 20,
+        height: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+      },
+      multipleIndicatorText: {
+        color: 'white',
+        fontSize: 10,
+        fontWeight: 'bold',
+      },
 });
