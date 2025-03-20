@@ -94,9 +94,13 @@ const HomeScreen = () => {
 
     const loadLikes = async () => {
         try {
-            const savedLikes = await AsyncStorage.getItem("likes");
-            if (savedLikes) {
-                setLikes(JSON.parse(savedLikes));
+            const response = await axios.get("https://mma301-project-be-9e9f.onrender.com/favorites/count");
+            if (response.data && response.data.data) {
+                const likesData = {};
+                response.data.data.forEach(item => {
+                    likesData[item.photoId] = item.count;
+                });
+                setLikes(likesData);
             }
         } catch (error) {
             console.log("Lỗi khi tải lượt thích:", error);
@@ -130,8 +134,6 @@ const HomeScreen = () => {
             
             const result = await toggleFavorite(photo._id, userId);
             
-            let updatedLikes = { ...likes };
-            
             if (result.isFavorite) {
                 const newFavoritePhoto = {
                     ...photo,
@@ -139,15 +141,13 @@ const HomeScreen = () => {
                     favoriteId: result.favorite._id
                 };
                 setFavoritePhotos([...favoritePhotos, newFavoritePhoto]);
-                updatedLikes[photo._id] = (updatedLikes[photo._id] || 0) + 1;
             } else {
                 const updatedFavorites = favoritePhotos.filter(fav => fav._id !== photo._id);
                 setFavoritePhotos(updatedFavorites);
-                updatedLikes[photo._id] = Math.max((updatedLikes[photo._id] || 0) - 1, 0);
             }
             
-            setLikes(updatedLikes);
-            await AsyncStorage.setItem("likes", JSON.stringify(updatedLikes));
+            // Cập nhật số lượt thích từ API
+            loadLikes();
             
             loadFavorites();
         } catch (error) {
