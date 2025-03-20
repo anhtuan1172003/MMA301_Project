@@ -143,7 +143,7 @@ const PhotoDetails = ({ route }) => {
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Ionicons name="chevron-back" size={24} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>PhotoFORUM</Text>
+          <Text style={styles.headerTitle}>Picly</Text>
           {isOwner && (
             <View style={{ flexDirection: 'row' }}>
               <TouchableOpacity 
@@ -347,7 +347,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingBottom: 15,
   },
-  headerTitle: { fontSize: 18, fontWeight: "bold" },
+  headerTitle: { fontSize: 50, fontWeight: "bold", fontStyle: "italic"  },
   header: {
     flexDirection: "row",
     alignItems: "center",
