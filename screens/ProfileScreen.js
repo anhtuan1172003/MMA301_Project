@@ -111,7 +111,7 @@ function ProfileScreen({ navigation }) {
       <SafeAreaView style={styles.container}>
       <View style={{ alignItems: "center", marginBottom: 10 }}>
         <Image
-          source={require("../assets/p1.png")}
+          source={user?.avatar ? { uri: user.avatar } : require("../assets/p1.png")}
           style={{
             height: 100,
             width: 100,

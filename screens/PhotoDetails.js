@@ -142,7 +142,7 @@ const PhotoDetails = ({ route }) => {
         </View>
         <View style={styles.header}>
           <Image
-            source={photo?.user?.avatar ? { uri: photo.user.avatar } : require("../assets/p2.png")}
+            source={photo?.userId?.avatar ? { uri: photo.userId.avatar } : require("../assets/p2.png")}
             style={styles.avatar}
           />
           <View style={styles.userTitle}>
@@ -191,8 +191,8 @@ const PhotoDetails = ({ route }) => {
             <FontAwesome name={isFavorite ? "heart" : "heart-o"} size={24} color="red" />
           </TouchableOpacity>
           <Ionicons name="chatbubble-ellipses-outline" size={24} />
-          <Ionicons name="repeat-outline" size={24} />
-          <Ionicons name="paper-plane-outline" size={24} />
+          {/* <Ionicons name="repeat-outline" size={24} />
+          <Ionicons name="paper-plane-outline" size={24} /> */}
         </View>
         
         {photo?.location && photo.location.latitude && photo.location.longitude && (
@@ -230,7 +230,7 @@ const PhotoDetails = ({ route }) => {
               >
                 <View style={styles.userInfo}>
                   <Image
-                    source={require("../assets/p2.png")}
+                    source={comment?.userId?.avatar ? { uri: comment.userId.avatar } : require("../assets/p2.png")}
                     style={styles.avatar}
                   />
                   <View style={styles.commentText}>
@@ -244,8 +244,8 @@ const PhotoDetails = ({ route }) => {
                     <View style={styles.reactions}>
                       <Ionicons name="heart-outline" size={20} />
                       <Ionicons name="chatbubble-ellipses-outline" size={20} />
-                      <Ionicons name="repeat-outline" size={20} />
-                      <Ionicons name="paper-plane-outline" size={20} />
+                      {/* <Ionicons name="repeat-outline" size={20} />
+                      <Ionicons name="paper-plane-outline" size={20} /> */}
                     </View>
                   </View>
                   <View style={{ bottom: 18 }}>
