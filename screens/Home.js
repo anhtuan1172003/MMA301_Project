@@ -26,7 +26,10 @@ const HomeScreen = () => {
         axios.get("https://mma301-project-be-9e9f.onrender.com/photos")
             .then(response => {
                 if (response.data && response.data.data) {
-                    setPhotos(response.data.data);
+                    const sortedPhotos = response.data.data.sort((a, b) => 
+                        new Date(b.createdAt) - new Date(a.createdAt)
+                    );
+                    setPhotos(sortedPhotos);
                 } else {
                     console.log("Dữ liệu không đúng định dạng:", response.data);
                     setPhotos([]);
