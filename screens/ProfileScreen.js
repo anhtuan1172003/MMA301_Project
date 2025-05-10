@@ -23,6 +23,7 @@ import TaggedTab from "./TabProfile/TaggedTab";
 import { FontAwesome } from "@expo/vector-icons";
 import { useAuth } from "../AuthContext";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect, useRoute } from "@react-navigation/native";
 
 const API_URL = "https://mma301-project-be-9e9f.onrender.com/users";
 const Tab = createMaterialTopTabNavigator();
@@ -31,10 +32,18 @@ function ProfileScreen({ navigation }) {
   const { logout } = useAuth();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const route = useRoute();
 
   useEffect(() => {
     getUserId();
   }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+        if (route.params?.refresh) {
+            fetchUserData();  // Tải lại dữ liệu khi có refresh
+        }
+    }, [route.params])
+);
 
   const getUserId = async () => {
     try {
@@ -111,7 +120,7 @@ function ProfileScreen({ navigation }) {
       <SafeAreaView style={styles.container}>
       <View style={{ alignItems: "center", marginBottom: 10 }}>
         <Image
-          source={require("../assets/p1.png")}
+          source={user?.avatar ? { uri: user.avatar } : require("../assets/p1.png")}
           style={{
             height: 100,
             width: 100,
@@ -184,18 +193,14 @@ function ProfileScreen({ navigation }) {
         />
       </View>
       <View style={styles.bottomNav}>
-                <TouchableOpacity style={styles.navButton}
-                onPress={() => navigation.navigate("Home")}>
+                <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate("Home")}>
                     <FontAwesome name="home" size={24} color="#8e8e8e" />
                 </TouchableOpacity>
-                <TouchableOpacity 
-                    style={styles.navButton}
-                    onPress={() => navigation.navigate("PostScreen")}
-                >
+                <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate("PostScreen")}>
                     <FontAwesome name="plus-square-o" size={24} color="#8e8e8e" />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.navButton}>
-                    <FontAwesome name="heart-o" size={24} color="#8e8e8e" />
+                <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate("MapScreen")}>
+                    <FontAwesome name="map-o" size={24} color="#8e8e8e" />
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.navButton}
                     onPress={() => navigation.navigate("ProfileStack")}>

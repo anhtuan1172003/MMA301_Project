@@ -44,7 +44,7 @@ const Signup = ({ navigation }) => {
     try {
       // Kiểm tra xem email đã tồn tại chưa
       const response = await axios.get(`${API_URL}/users`);
-      const existingUser = response.data.find((user) => user.account.email === email);
+      const existingUser = response.data.data.find((user) => user.account.email === email);
 
       if (existingUser) {
         Alert.alert("Lỗi", "Email đã tồn tại. Vui lòng sử dụng email khác!");

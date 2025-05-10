@@ -8,6 +8,7 @@ import { FontAwesome } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation, useFocusEffect, useRoute } from "@react-navigation/native";
 import { toggleFavorite, checkIsFavorite } from "../services/FavoriteService";
+import { Ionicons } from "@expo/vector-icons";
 
 const HomeScreen = () => {
     const route = useRoute();
@@ -25,7 +26,10 @@ const HomeScreen = () => {
         axios.get("https://mma301-project-be-9e9f.onrender.com/photos")
             .then(response => {
                 if (response.data && response.data.data) {
-                    setPhotos(response.data.data);
+                    const sortedPhotos = response.data.data.sort((a, b) => 
+                        new Date(b.createdAt) - new Date(a.createdAt)
+                    );
+                    setPhotos(sortedPhotos);
                 } else {
                     console.log("Dữ liệu không đúng định dạng:", response.data);
                     setPhotos([]);
@@ -246,18 +250,20 @@ const HomeScreen = () => {
             
             {/* Header */}
             <View style={styles.header}>
-                <Text style={styles.appTitle}>Picly</Text>
-                <TextInput
-                    style={styles.searchBox}
-                    placeholder="Nhập tiêu đề..."
-                    onChangeText={text => setSearch(text)}
-                    value={search}
-                />
+            <Text style={styles.appTitle}>Picly</Text>
+                <View style={styles.searchContainer}>
+                    <TextInput
+                        style={styles.searchInput}
+                        placeholder="Tìm kiếm..."
+                        value={search}
+                        onChangeText={setSearch}
+                    />
+                </View>
                 <TouchableOpacity 
-                    style={styles.postButton} 
-                    onPress={() => navigation.navigate("PostScreen")}
+                    style={styles.mapButton}
+                    onPress={() => navigation.navigate("MapScreen")}
                 >
-                    <FontAwesome name="plus" size={24} color="white" />
+                    <Ionicons name="map-outline" size={24} color="#007260" />
                 </TouchableOpacity>
             </View>
             
@@ -273,9 +279,7 @@ const HomeScreen = () => {
                 >
                     <FontAwesome name="plus-square-o" size={24} color="#8e8e8e" />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.navButton}>
-                    <FontAwesome name="heart-o" size={24} color="#8e8e8e" />
-                </TouchableOpacity>
+
                 <TouchableOpacity style={styles.navButton}
                     onPress={() => navigation.navigate("ProfileStack")}>
                     <FontAwesome name="user-o" size={24} color="#8e8e8e" />
@@ -438,5 +442,16 @@ const styles = StyleSheet.create({
                 marginBottom: 40,
             },
           }),
-    }
+    },
+    header: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingHorizontal: 10,
+    },
+    mapButton: {
+        padding: 8,
+        borderRadius: 20,
+        backgroundColor: "#f0f0f0",
+    },
 });

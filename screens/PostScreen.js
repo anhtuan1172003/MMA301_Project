@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react";
+import * as Location from "expo-location";
 import {
     View,
     Text,
@@ -13,7 +14,8 @@ import {
     Animated,
     Dimensions,
     SafeAreaView,
-    StatusBar
+    StatusBar,
+    Switch
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { FontAwesome, Ionicons, MaterialIcons } from "@expo/vector-icons";
@@ -29,6 +31,8 @@ const PostScreen = () => {
     const [selectedThumbnailIndex, setSelectedThumbnailIndex] = useState(0);
     const [loading, setLoading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
+    const [includeLocation, setIncludeLocation] = useState(false);
+    const [currentLocation, setCurrentLocation] = useState(null);
     const navigation = useNavigation();
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -108,6 +112,36 @@ const PostScreen = () => {
     
             const parsedUser = JSON.parse(storedUser);
     
+            // Get location if enabled
+            let locationData = null;
+            if (includeLocation) {
+                try {
+                    if (!currentLocation) {
+                        const { status } = await Location.requestForegroundPermissionsAsync();
+                        if (status !== 'granted') {
+                            Alert.alert("Quyền truy cập bị từ chối", "Cần cấp quyền truy cập vị trí để tiếp tục", [{ text: "Đã hiểu" }]);
+                            setIncludeLocation(false);
+                        } else {
+                            const location = await Location.getCurrentPositionAsync({});
+                            setCurrentLocation(location.coords);
+                            locationData = {
+                                latitude: location.coords.latitude.toString(),
+                                longitude: location.coords.longitude.toString()
+                            };
+                        }
+                    } else {
+                        locationData = {
+                            latitude: currentLocation.latitude.toString(),
+                            longitude: currentLocation.longitude.toString()
+                        };
+                    }
+                } catch (error) {
+                    console.error("Lỗi khi lấy vị trí:", error);
+                    Alert.alert("Lỗi vị trí", "Không thể lấy vị trí hiện tại", [{ text: "Đã hiểu" }]);
+                    setIncludeLocation(false);
+                }
+            }
+    
             // Show progress updates
             let completedUploads = 0;
             
@@ -160,6 +194,11 @@ const PostScreen = () => {
                 thumbnail: thumbnailUrl
             }
         };
+        
+        // Add location data if available
+        if (locationData) {
+            postData.location = locationData;
+        }
         
         const response = await axios.post(
             "https://mma301-project-be-9e9f.onrender.com/photos",
@@ -311,6 +350,50 @@ const PostScreen = () => {
                             </Text>
                         </Animated.View>
                     )}
+
+                    <View style={styles.locationContainer}>
+                        <View style={styles.sectionTitle}>
+                            <MaterialIcons name="location-on" size={22} color="#007AFF" />
+                            <Text style={styles.sectionTitleText}>Vị trí</Text>
+                        </View>
+                        <View style={styles.switchContainer}>
+                            <Text style={styles.switchLabel}>
+                                {includeLocation ? "Đăng kèm vị trí" : "Không đăng kèm vị trí"}
+                            </Text>
+                            <Switch
+                                trackColor={{ false: "#E5E5EA", true: "#4CD964" }}
+                                thumbColor={includeLocation ? "#fff" : "#fff"}
+                                ios_backgroundColor="#E5E5EA"
+                                onValueChange={async (value) => {
+                                    setIncludeLocation(value);
+                                    if (value && !currentLocation) {
+                                        const { status } = await Location.requestForegroundPermissionsAsync();
+                                        if (status !== 'granted') {
+                                            Alert.alert("Quyền truy cập bị từ chối", 
+                                                "Cần cấp quyền truy cập vị trí để tiếp tục", 
+                                                [{ text: "Đã hiểu" }]);
+                                            setIncludeLocation(false);
+                                            return;
+                                        }
+                                        try {
+                                            const location = await Location.getCurrentPositionAsync({});
+                                            setCurrentLocation(location.coords);
+                                        } catch (error) {
+                                            console.error("Lỗi khi lấy vị trí:", error);
+                                            Alert.alert("Lỗi vị trí", "Không thể lấy vị trí hiện tại", [{ text: "Đã hiểu" }]);
+                                            setIncludeLocation(false);
+                                        }
+                                    }
+                                }}
+                                value={includeLocation}
+                            />
+                        </View>
+                        {includeLocation && currentLocation && (
+                            <Text style={styles.locationText}>
+                                Vị trí hiện tại: {currentLocation.latitude.toFixed(6)}, {currentLocation.longitude.toFixed(6)}
+                            </Text>
+                        )}
+                    </View>
 
                     <View style={styles.buttonContainer}>
                         <TouchableOpacity 
